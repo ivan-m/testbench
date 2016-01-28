@@ -19,8 +19,10 @@ library
   exposed-modules:     TestBench
   -- other-modules:
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base >=4.7 && <4.9
                      , criterion
+                     , deepseq
                      , HUnit
+                     , transformers
   -- hs-source-dirs:
   default-language:    Haskell2010
