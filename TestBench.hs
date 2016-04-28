@@ -88,19 +88,22 @@ singleTree = treeList . (:[])
 -- -----------------------------------------------------------------------------
 
 nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-nfEq = mkOp nf . (==)
+nfEq = mkTestBench (Just .: nf) . (Just .: (@?=))
 
 whnfEq :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-whnfEq = mkOp whnf . (==)
+whnfEq = mkTestBench (Just .: whnf) . (Just .: (@?=))
 
-mkOp :: (Show b) => ((a -> b) -> a -> Benchmarkable) -> (b -> Bool) -> (a -> b) -> String -> a -> TestBench
-mkOp toB checkRes fn nm arg = singleTree . Leaf $ Op { opName  = nm
-                                                     , opBench = Just (toB fn arg)
-                                                     , opTest  = Just (checkRes res @? msg)
-                                                     }
-  where
-    res = fn arg
-    msg = "Result value of " ++ show res ++ " does not satisfy predicate."
+-- | A way of writing custom testing/benchmarking statements.  You
+--   will probably want to use one of the pre-defined versions
+--   instead.
+mkTestBench :: ((a -> b) -> a -> Maybe Benchmarkable) -> (b -> Maybe Assertion)
+               -> (a -> b) -> String -> a -> TestBench
+mkTestBench toB checkRes fn nm arg = singleTree
+                                     . Leaf
+                                     $ Op { opName  = nm
+                                          , opBench = toB fn arg
+                                          , opTest  = checkRes (fn arg)
+                                          }
 
 --------------------------------------------------------------------------------
 
