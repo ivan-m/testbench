@@ -35,9 +35,7 @@ data LabelTree a = Leaf a
                  | Branch String [LabelTree a]
                    deriving (Eq, Ord, Show, Read)
 
-type OpTreeM a = LabelTree Operation
-
-type OpTree = OpTreeM ()
+type OpTree = LabelTree Operation
 
 opTreeTo :: (Operation -> Maybe a) -> OpTree -> Maybe (LabelTree (String, a))
 opTreeTo f = go
@@ -67,61 +65,32 @@ toTests = TestList . opForestTo opTest (~:) (~:)
 
 -- -----------------------------------------------------------------------------
 
-newtype OpM a r = OpM { getOpTree :: WriterT [OpTreeM a] IO r}
-                deriving (Functor, Applicative, Monad, MonadIO)
+newtype TestBenchM r = TestBenchM { getOpTree :: WriterT [OpTree] IO r}
+                     deriving (Functor, Applicative, Monad, MonadIO)
 
-type Op = OpM () ()
+type TestBench = TestBenchM ()
 
-makeOpTree :: String -> OpM a r -> IO (OpTreeM a)
+makeOpTree :: String -> TestBench -> IO OpTree
 makeOpTree nm = fmap (Branch nm) . execWriterT . getOpTree
 
-collection :: String -> OpM a r -> OpM a ()
+collection :: String -> TestBench -> TestBench
 collection nm ops = liftIO (makeOpTree nm ops) >>= singleTree
 
-treeList :: [OpTreeM a] -> OpM a ()
-treeList = OpM . tell
+treeList :: [OpTree] -> TestBench
+treeList = TestBenchM . tell
 
-singleTree :: OpTreeM a -> OpM a ()
+singleTree :: OpTree -> TestBench
 singleTree = treeList . (:[])
 
 -- -----------------------------------------------------------------------------
 
-{-
-
-Not sure if `b' can be generic (ideally it would be that given `a' you know `b', but I don't think that will pan out).
-
-Ultimately, the function should be something along the lines of:
-
-(BConstraints b) => (forall a. (AConstraints a) => a -> b)
-
--}
-
--- data TBOp = TBO { tboName :: !String
---                 , tboFunction :: a -> b
---                 , tbAConstraint :: Proxy (* -> Constraint)
---                 , tbBConstraint :: Proxy (* -> Constraint)
---                 }
-
-
--- For benchmarking:
---
--- * Name
--- * Function (a -> b)
--- * Argument of type a
--- * Whether to do it to NF or WHNF (maybe with IO as well)
-
--- For testing:
---
--- * Name
--- * Some expression that evaluates to a Bool (or 2 args)
-
-nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> Op
+nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
 nfEq = mkOp nf . (==)
 
-whnfEq :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> Op
+whnfEq :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
 whnfEq = mkOp whnf . (==)
 
-mkOp :: (Show b) => ((a -> b) -> a -> Benchmarkable) -> (b -> Bool) -> (a -> b) -> String -> a -> Op
+mkOp :: (Show b) => ((a -> b) -> a -> Benchmarkable) -> (b -> Bool) -> (a -> b) -> String -> a -> TestBench
 mkOp toB checkRes fn nm arg = singleTree . Leaf $ Op { opName  = nm
                                                      , opBench = Just (toB fn arg)
                                                      , opTest  = Just (checkRes res @? msg)
@@ -130,5 +99,18 @@ mkOp toB checkRes fn nm arg = singleTree . Leaf $ Op { opName  = nm
     res = fn arg
     msg = "Result value of " ++ show res ++ " does not satisfy predicate."
 
-cpsTest :: (a -> String) -> ((a -> IO ()) -> IO ()) -> IO ()
-cpsTest pr mfunc = mfunc (putStrLn . pr)
+--------------------------------------------------------------------------------
+
+
+
+
+
+
+
+--
+
+--
+
+
+
+
