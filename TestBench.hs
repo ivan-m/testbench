@@ -14,9 +14,13 @@
  -}
 module TestBench where
 
-import Criterion
-import Test.HUnit.Base (Assertion, Test (..), (@?), (@?=), (~:))
+import Criterion.Main (defaultMain)
+import Criterion (Benchmarkable, Benchmark, nf, whnf, bench, bgroup)
+import Test.HUnit.Base (Assertion, Test (..), (@?=), (~:), Counts (..))
+import Test.HUnit.Text (runTestTT)
 
+import Control.Monad (when)
+import Control.Arrow ((&&&))
 import Control.Applicative             (liftA2)
 import Control.DeepSeq                 (NFData (..))
 import Control.Monad.IO.Class
@@ -90,6 +94,21 @@ treeList = TestBenchM . tell
 
 singleTree :: OpTree -> TestBench
 singleTree = treeList . (:[])
+
+runTestBench :: TestBench -> IO [OpTree]
+runTestBench = execWriterT . getOpTrees
+
+-- | Obtain the resulting test and benchmarks from the specified
+--   @TestBench@.
+getTestBenches :: TestBench -> IO (Test, [Benchmark])
+getTestBenches = fmap (toTests &&& toBenchmarks) . runTestBench
+
+-- | Run the specified benchmarks if and only if all tests pass.
+testBench :: TestBench -> IO ()
+testBench tb = do (tst,bs) <- getTestBenches tb
+                  tcnts <- runTestTT tst
+                  when (errors tcnts == 0 && failures tcnts == 0)
+                       (defaultMain bs)
 
 -- -----------------------------------------------------------------------------
 
