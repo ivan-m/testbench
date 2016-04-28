@@ -62,8 +62,8 @@ opForestTo f lf br = mapMaybe (fmap (toCustomTree lf br) . opTreeTo f)
 toBenchmarks :: [OpTree] -> [Benchmark]
 toBenchmarks = opForestTo opBench bench bgroup
 
-toTest :: [OpTree] -> Test
-toTest = TestList . opForestTo opTest (~:) (~:)
+toTests :: [OpTree] -> Test
+toTests = TestList . opForestTo opTest (~:) (~:)
 
 -- -----------------------------------------------------------------------------
 
