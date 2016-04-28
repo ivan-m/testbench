@@ -12,7 +12,51 @@
 
 
  -}
-module TestBench where
+module TestBench
+  ( -- * Specification and running
+    TestBench
+  , testBench
+    -- ** Running manually
+  , getTestBenches
+    -- ** Lower-level types
+  , TestBenchM
+  , OpTree
+  , Operation
+  , LabelTree(..)
+
+    -- * Grouping
+  , collection
+
+    -- * Direct benchmarks\/tests
+  , nfEq
+  , whnfEq
+  , mkTestBench
+
+    -- * Comparisons
+  , compareFunc
+  , compareFuncConstraint
+
+    -- ** Comparison parameters
+  , CompParams
+    -- *** Control benchmarking
+  , benchNormalForm
+  , withBenchMode
+  , noBenchmarks
+
+    -- *** Control testing
+  , baseline
+  , testWith
+  , noTests
+
+    -- ** Specify comparisons
+  , comp
+  , compBench
+  , compTest
+
+    -- ** Lower-level types
+  , ComparisonM
+  , SameAs
+  ) where
 
 import Criterion.Main (defaultMain)
 import Criterion (Benchmarkable, Benchmark, nf, whnf, bench, bgroup)
