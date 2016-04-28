@@ -118,6 +118,7 @@ compareFunc :: forall a b. String -> (a -> b) -> CompParams (SameAs a) b
                -> Comparison (SameAs a) b -> TestBench
 compareFunc = compareFuncConstraint (Proxy :: Proxy (SameAs a))
 
+-- | An alias for readability.
 type SameAs a = (~) a
 
 -- | As with 'compareFunc' but allow for polymorphic inputs by
@@ -130,7 +131,7 @@ compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci c
   where
     ci0 :: CompInfo ca b
     ci0 = CI { func    = f
-             , toBench = (Just .) . whnf
+             , toBench = Just .: whnf
              , toTest  = const Nothing
              }
 
@@ -147,7 +148,10 @@ newtype CompParams ca b = CP { unCP :: ( CompInfo ca b -> Endo [Operation]
                         deriving (Monoid)
 
 benchNormalForm :: (NFData b) => CompParams ca b
-benchNormalForm = CP (mempty, Endo (\ci -> ci { toBench = (Just .) . nf }))
+benchNormalForm = withBenchMode nf
+
+withBenchMode :: (forall a. (ca a) => (a -> b) -> a -> Benchmarkable) -> CompParams ca b
+withBenchMode toB = CP (mempty, Endo (\ci -> ci { toBench = Just .: toB }))
 
 noBenchmarks :: CompParams ca b
 noBenchmarks = CP (mempty, Endo (\ci -> ci { toBench = \_ _ -> Nothing }))
@@ -223,3 +227,8 @@ compOp nm arg ci = Op { opName  = nm
                       , opBench = toBench ci (func ci) arg
                       , opTest  = toTest ci $ func ci arg
                       }
+
+--------------------------------------------------------------------------------
+
+(.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+(f .: g) x y = f (g x y)
