@@ -60,7 +60,7 @@ module TestBench
 
 import Criterion       (Benchmark, Benchmarkable, bench, bgroup, nf, whnf)
 import Criterion.Main  (defaultMain)
-import Test.HUnit.Base (Assertion, Counts (..), Test (..), (@?=), (~:))
+import Test.HUnit.Base (Assertion, Counts (..), Test (..), (@=?), (~:))
 import Test.HUnit.Text (runTestTT)
 
 import Control.Applicative             (liftA2)
@@ -157,10 +157,10 @@ testBench tb = do (tst,bs) <- getTestBenches tb
 -- -----------------------------------------------------------------------------
 
 nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-nfEq = mkTestBench (Just .: nf) . (Just .: (@?=))
+nfEq = mkTestBench (Just .: nf) . (Just .: (@=?))
 
 whnfEq :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-whnfEq = mkTestBench (Just .: whnf) . (Just .: (@?=))
+whnfEq = mkTestBench (Just .: whnf) . (Just .: (@=?))
 
 -- | A way of writing custom testing/benchmarking statements.  You
 --   will probably want to use one of the pre-defined versions
@@ -247,7 +247,7 @@ baseline nm arg = CP (addOp, Endo setTest)
 
     addOp ci = Endo (opFrom ci:)
 
-    setTest ci = ci { toTest = Just . (func ci arg @?=) }
+    setTest ci = ci { toTest = Just . (func ci arg @=?) }
 
 -- | Specify a predicate that all results should satisfy.
 --
