@@ -58,15 +58,15 @@ module TestBench
   , SameAs
   ) where
 
-import Criterion.Main (defaultMain)
-import Criterion (Benchmarkable, Benchmark, nf, whnf, bench, bgroup)
-import Test.HUnit.Base (Assertion, Test (..), (@?=), (~:), Counts (..))
+import Criterion       (Benchmark, Benchmarkable, bench, bgroup, nf, whnf)
+import Criterion.Main  (defaultMain)
+import Test.HUnit.Base (Assertion, Counts (..), Test (..), (@?=), (~:))
 import Test.HUnit.Text (runTestTT)
 
-import Control.Monad (when)
-import Control.Arrow ((&&&))
 import Control.Applicative             (liftA2)
+import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData (..))
+import Control.Monad                   (when)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
