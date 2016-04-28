@@ -29,15 +29,19 @@ import Data.Proxy
 
 -- -----------------------------------------------------------------------------
 
+-- | An individual operation potentially consisting of a benchmark
+--   and/or test.
 data Operation = Op { opName  :: String
                     , opBench :: Maybe Benchmarkable
                     , opTest  :: Maybe Assertion
                     }
 
+-- | A simple labelled rose-tree data structure.
 data LabelTree a = Leaf a
                  | Branch String [LabelTree a]
                    deriving (Eq, Ord, Show, Read)
 
+-- | A tree of operations.
 type OpTree = LabelTree Operation
 
 opTreeTo :: (Operation -> Maybe a) -> OpTree -> Maybe (LabelTree (String, a))
@@ -68,14 +72,16 @@ toTests = TestList . opForestTo opTest (~:) (~:)
 
 -- -----------------------------------------------------------------------------
 
-newtype TestBenchM r = TestBenchM { getOpTree :: WriterT [OpTree] IO r}
+-- TODO: does this /really/ need to be in IO?
+newtype TestBenchM r = TestBenchM { getOpTrees :: WriterT [OpTree] IO r}
                      deriving (Functor, Applicative, Monad, MonadIO)
 
 type TestBench = TestBenchM ()
 
 makeOpTree :: String -> TestBench -> IO OpTree
-makeOpTree nm = fmap (Branch nm) . execWriterT . getOpTree
+makeOpTree nm = fmap (Branch nm) . execWriterT . getOpTrees
 
+-- | Label a sub-part of a @TestBench@.
 collection :: String -> TestBench -> TestBench
 collection nm ops = liftIO (makeOpTree nm ops) >>= singleTree
 
