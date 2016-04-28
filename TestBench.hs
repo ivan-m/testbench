@@ -1,6 +1,5 @@
-{-# LANGUAGE ConstraintKinds, DataKinds, GADTs, GeneralizedNewtypeDeriving,
-             ImpredicativeTypes, KindSignatures, NoMonoLocalBinds, RankNTypes,
-             ScopedTypeVariables, TypeOperators #-}
+{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, RankNTypes,
+             ScopedTypeVariables #-}
 
 {- |
    Module      : TestBench
