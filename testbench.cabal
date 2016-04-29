@@ -29,6 +29,10 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
+source-repository head
+    type:         git
+    location:     https://github.com/ivan-m/testbench.git
+
 flag examples
      description:      Build example executable
      default:          False
@@ -36,7 +40,6 @@ flag examples
 library
   exposed-modules:     TestBench
   -- other-modules:
-  -- other-extensions:
   build-depends:       base >=4.7 && <4.9
                      , criterion
                      , deepseq
