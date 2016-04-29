@@ -66,13 +66,13 @@ import Control.Applicative             (liftA2)
 import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData (..))
 import Control.Monad                   (when)
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.Writer.Lazy
+import Control.Monad.IO.Class          (MonadIO (liftIO))
+import Control.Monad.Trans.Class       (lift)
+import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
+import Control.Monad.Trans.Writer.Lazy (WriterT, execWriterT, tell)
 import Data.Maybe                      (mapMaybe)
 import Data.Monoid                     (Endo (..))
-import Data.Proxy
+import Data.Proxy                      (Proxy (..))
 
 -- -----------------------------------------------------------------------------
 
