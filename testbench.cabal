@@ -42,8 +42,8 @@ flag examples
 library
   exposed-modules:     TestBench
   -- other-modules:
-  build-depends:       base >=4.7 && <4.9
-                     , criterion
+  build-depends:       base >=4.7 && <4.11
+                     , criterion == 1.1.*
                      , deepseq
                      , HUnit
                      , transformers
