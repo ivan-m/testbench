@@ -48,19 +48,19 @@ Limitations
 * _criterion_ currently does not lend itself well to visualising the
   results from this:
 
-      - A very limited internal tree-like structure which is not
-        really apparent when results are displayed.
+    - A very limited internal tree-like structure which is not really
+      apparent when results are displayed.
 
-      - No easy way to actually _compare_ benchmark values: there used
-        to be a `bcompare` function (and when work on _testbench_ was
-        first started it was intended to take advantage of this
-        function) but it is no longer present.  As such, comparisons
-        must be done by hand by comparing the results visually.
+    - No easy way to actually _compare_ benchmark values: there used
+      to be a `bcompare` function (and when work on _testbench_ was
+      first started it was intended to take advantage of this
+      function) but it is no longer present.  As such, comparisons
+      must be done by hand by comparing the results visually.
 
-      - Having more than a few benchmarks together produces a lot of
-        output (either to the terminal or a resulting report):
-        combined with the previous point, having more than a few
-        benchmarks is discouraged.
+    - Having more than a few benchmarks together produces a lot of
+      output (either to the terminal or a resulting report): combined
+      with the previous point, having more than a few benchmarks is
+      discouraged.
 
 * The `testBench` function for running the tests and benchmarks is
   currently very stupid.  For example, there is no way to specify that
