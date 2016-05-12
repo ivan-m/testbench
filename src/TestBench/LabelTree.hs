@@ -18,9 +18,9 @@ data LabelTree a = Leaf a
                  | Branch String [LabelTree a]
   deriving (Eq, Ord, Show, Read, Functor)
 
-toCustomTree :: (String -> a -> b) -> (String -> [b] -> b) -> LabelTree (String,a) -> b
+toCustomTree :: (a -> b) -> (String -> [b] -> b) -> LabelTree a -> b
 toCustomTree lf br = go
   where
     go tr = case tr of
-              Leaf (str,a)   -> lf str a
+              Leaf a         -> lf a
               Branch str trs -> br str (map go trs)

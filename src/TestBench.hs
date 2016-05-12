@@ -99,7 +99,7 @@ opTreeTo f = go
 
 opForestTo :: (Operation -> Maybe a) -> (String -> a -> b) -> (String -> [b] -> b)
               -> [OpTree] -> [b]
-opForestTo f lf br = mapMaybe (fmap (toCustomTree lf br) . opTreeTo f)
+opForestTo f lf br = mapMaybe (fmap (toCustomTree (uncurry lf) br) . opTreeTo f)
 
 toBenchmarks :: [OpTree] -> [Benchmark]
 toBenchmarks = opForestTo opBench bench bgroup
