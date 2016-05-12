@@ -57,6 +57,8 @@ module TestBench
   , SameAs
   ) where
 
+import TestBench.Tree
+
 import Criterion       (Benchmark, Benchmarkable, bench, bgroup, nf, whnf)
 import Criterion.Main  (defaultMain)
 import Test.HUnit.Base (Assertion, Counts (..), Test (..), (@=?), (~:))
@@ -83,11 +85,6 @@ data Operation = Op { opName  :: String
                     , opTest  :: Maybe Assertion
                     }
 
--- | A simple labelled rose-tree data structure.
-data LabelTree a = Leaf a
-                 | Branch String [LabelTree a]
-                   deriving (Eq, Ord, Show, Read)
-
 -- | A tree of operations.
 type OpTree = LabelTree Operation
 
@@ -99,13 +96,6 @@ opTreeTo f = go
               Branch lb trs -> case mapMaybe go trs of
                                  []   -> Nothing
                                  trs' -> Just (Branch lb trs')
-
-toCustomTree :: (String -> a -> b) -> (String -> [b] -> b) -> LabelTree (String,a) -> b
-toCustomTree lf br = go
-  where
-    go tr = case tr of
-              Leaf (str,a)   -> lf str a
-              Branch str trs -> br str (map go trs)
 
 opForestTo :: (Operation -> Maybe a) -> (String -> a -> b) -> (String -> [b] -> b)
               -> [OpTree] -> [b]

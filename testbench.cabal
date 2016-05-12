@@ -42,6 +42,7 @@ flag examples
 library
   exposed-modules:     TestBench
   other-modules:       Criterion.Tree
+                     , TestBench.Tree
   build-depends:       base >=4.7 && <4.11
                      , boxes == 0.1.*
                      , criterion == 1.1.*
