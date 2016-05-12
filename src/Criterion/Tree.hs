@@ -12,10 +12,15 @@ benchmarks.
  -}
 module Criterion.Tree where
 
-import Criterion
 import Criterion.Analysis              (OutlierVariance (ovFraction),
-                                        SampleAnalysis (..))
+                                        SampleAnalysis (..), analyseSample)
+import Criterion.Internal              (runAndAnalyseOne)
+import Criterion.Main.Options          (defaultConfig)
 import Criterion.Measurement           (secs)
+import Criterion.Monad                 (withConfig)
+import Criterion.Types                 (Benchmarkable, Config (..),
+                                        DataRecord (..), Report (..),
+                                        Verbosity (..))
 import Statistics.Resampling.Bootstrap (Estimate (..))
 
 import Data.List              (transpose)
@@ -25,6 +30,23 @@ import Text.PrettyPrint.Boxes
 
 indentPerLevel :: Int
 indentPerLevel = 2
+
+getResults :: Config -> String -> Benchmarkable -> IO (Maybe Results)
+getResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
+                          return $ case dr of
+                                     Measurement{} -> Nothing
+                                     Analysed rpt  -> Just $
+                                       let sa = reportAnalysis rpt
+                                       in Results { resMean   = anMean sa
+                                                  , resStdDev = anStdDev sa
+                                                  , resOutVar = anOutlierVar sa
+                                                  }
+
+  where
+    cfg' = cfg { verbosity = Quiet }
+
+    i = 0 -- We're ignoring this value anyway, so it should be OK to
+          -- just set it.
 
 data Results = Results { resMean   :: !Estimate
                        , resStdDev :: !Estimate
