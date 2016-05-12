@@ -17,6 +17,10 @@ module TestBench
   , testBench
     -- ** Running manually
   , getTestBenches
+  , BenchTree
+  , BenchForest
+  , flattenBenchForest
+  , benchmarkForest
     -- ** Lower-level types
   , TestBenchM
   , OpTree
@@ -57,10 +61,13 @@ module TestBench
   , SameAs
   ) where
 
-import Criterion       (Benchmark, Benchmarkable, bench, bgroup, nf, whnf)
-import Criterion.Main  (defaultMain)
-import Test.HUnit.Base (Assertion, Counts (..), Test (..), (@=?), (~:))
-import Test.HUnit.Text (runTestTT)
+import Criterion.Tree
+import TestBench.LabelTree
+
+import Criterion              (Benchmark, Benchmarkable, nf, whnf)
+import Criterion.Main.Options (defaultConfig)
+import Test.HUnit.Base        (Assertion, Counts (..), Test (..), (@=?), (~:))
+import Test.HUnit.Text        (runTestTT)
 
 import Control.Applicative             (liftA2)
 import Control.Arrow                   ((&&&))
@@ -83,11 +90,6 @@ data Operation = Op { opName  :: String
                     , opTest  :: Maybe Assertion
                     }
 
--- | A simple labelled rose-tree data structure.
-data LabelTree a = Leaf a
-                 | Branch String [LabelTree a]
-                   deriving (Eq, Ord, Show, Read)
-
 -- | A tree of operations.
 type OpTree = LabelTree Operation
 
@@ -100,19 +102,12 @@ opTreeTo f = go
                                  []   -> Nothing
                                  trs' -> Just (Branch lb trs')
 
-toCustomTree :: (String -> a -> b) -> (String -> [b] -> b) -> LabelTree (String,a) -> b
-toCustomTree lf br = go
-  where
-    go tr = case tr of
-              Leaf (str,a)   -> lf str a
-              Branch str trs -> br str (map go trs)
-
 opForestTo :: (Operation -> Maybe a) -> (String -> a -> b) -> (String -> [b] -> b)
               -> [OpTree] -> [b]
-opForestTo f lf br = mapMaybe (fmap (toCustomTree lf br) . opTreeTo f)
+opForestTo f lf br = mapMaybe (fmap (toCustomTree (uncurry lf) br) . opTreeTo f)
 
-toBenchmarks :: [OpTree] -> [Benchmark]
-toBenchmarks = opForestTo opBench bench bgroup
+toBenchmarks :: [OpTree] -> BenchForest
+toBenchmarks = mapMaybe (opTreeTo opBench)
 
 toTests :: [OpTree] -> Test
 toTests = TestList . opForestTo opTest (~:) (~:)
@@ -143,15 +138,15 @@ runTestBench = execWriterT . getOpTrees
 
 -- | Obtain the resulting test and benchmarks from the specified
 --   @TestBench@.
-getTestBenches :: TestBench -> IO (Test, [Benchmark])
+getTestBenches :: TestBench -> IO (Test, BenchForest)
 getTestBenches = fmap (toTests &&& toBenchmarks) . runTestBench
 
 -- | Run the specified benchmarks if and only if all tests pass.
 testBench :: TestBench -> IO ()
-testBench tb = do (tst,bs) <- getTestBenches tb
+testBench tb = do (tst,bf) <- getTestBenches tb
                   tcnts <- runTestTT tst
                   when (errors tcnts == 0 && failures tcnts == 0)
-                       (defaultMain bs)
+                       (benchmarkForest defaultConfig bf) -- TODO: make this configurable
 
 -- -----------------------------------------------------------------------------
 

@@ -43,30 +43,27 @@ Limitations
   some escape hatches for stating how to create `Benchmarkable`
   values) but has not been tested yet.
 
-* No availability of specifying an environment to benchmarks in.
+* No availability of specifying an environment to run benchmarks in.
 
-* _criterion_ currently does not lend itself well to visualising the
-  results from this:
+* To be able to display the tree-like structure more readily for
+  comparisons, the following limitations (currently) have to be made:
 
-    - A very limited internal tree-like structure which is not really
-      apparent when results are displayed.
+    - No detailed output, including no reports.  In practice however,
+      the detailed outputs produced by _criterion_ don't lend
+      themselves well to comparisons.
 
-    - No easy way to actually _compare_ benchmark values: there used
-      to be a `bcompare` function (and when work on _testbench_ was
-      first started it was intended to take advantage of this
-      function) but it is no longer present.  As such, comparisons
-      must be done by hand by comparing the results visually.
+    - No CSV output for saving results.  This should be easier to add
+      in if required but currently isn't available.
 
-    - Having more than a few benchmarks together produces a lot of
-      output (either to the terminal or a resulting report): combined
-      with the previous point, having more than a few benchmarks is
-      discouraged.
+    - To be able to display the tabular results, it isn't possible to
+      get any benchmarking results until the _all_ of the benchmarks
+      have been run.
 
 * The `testBench` function for running the tests and benchmarks is
   currently very stupid.  For example, there is no way to specify that
-  you do not wish to run the tests from the command-line, and
-  _criterion_ command-line parameters happen to be accepted purely by
-  happenstance.
+  you do not wish to run the tests from the command-line, and there is
+  no option of only running selected benchmarks, how many times each
+  should be run, etc.
 
 Fortuitously Anticipated Queries
 --------------------------------
@@ -108,3 +105,26 @@ _benchmarks_ are valid and are thus typically equality/predicate-based
 tests on the result from a simple function; as such it is more
 intended that they are quickly run as a verification stage rather than
 the basis for a large test-suite.
+
+### Why not use criterion directly for running benchmarks?
+
+_criterion_ currently does not lend itself well to visualising the
+results from comparison-style benchmarks:
+
+* A very limited internal tree-like structure which is not really
+  apparent when results are displayed.
+
+* No easy way to actually _compare_ benchmark values: there used to be
+  a `bcompare` function (and when work on _testbench_ was first
+  started it was intended to take advantage of this function) but it
+  is no longer present.  As such, comparisons must be done by hand by
+  comparing the results visually.
+
+* Having more than a few benchmarks together produces a lot of output
+  (either to the terminal or a resulting report): combined with the
+  previous point, having more than a few benchmarks is discouraged.
+
+Note that if however you wish to use _criterion_ more directly (either
+for configurability or to be able to have reports), a combination of
+`getTestBenches` and `flattenBenchForest` will provide you with a
+`Benchmark` value that is accepted by _criterion_.
