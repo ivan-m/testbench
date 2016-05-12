@@ -57,7 +57,7 @@ module TestBench
   , SameAs
   ) where
 
-import TestBench.Tree
+import TestBench.LabelTree
 
 import Criterion       (Benchmark, Benchmarkable, bench, bgroup, nf, whnf)
 import Criterion.Main  (defaultMain)

@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {- |
-   Module      : TestBench.Tree
+   Module      : TestBench.LabelTree
    Description : Labelled rose-tree structure
    Copyright   : (c) Ivan Lazar Miljenovic
    License     : MIT
@@ -9,7 +9,7 @@
 
 
  -}
-module TestBench.Tree where
+module TestBench.LabelTree where
 
 --------------------------------------------------------------------------------
 
