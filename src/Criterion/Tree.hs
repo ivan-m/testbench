@@ -28,18 +28,21 @@ indentPerLevel = 2
 
 data Results = Results { resMean   :: !Estimate
                        , resStdDev :: !Estimate
+                       , resOutVar :: !OutlierVariance
                        }
   deriving (Eq, Show, Read)
 
 resHeaders :: [Box]
-resHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB"]
+resHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
 
 resToBoxes :: Results -> [Box]
-resToBoxes r = e2b (resMean r) (e2b (resStdDev r) [])
+resToBoxes r = e2b (resMean r) (e2b (resStdDev r) [ov])
   where
     e2b e bs = toB estPoint : toB estLowerBound : toB estUpperBound : bs
       where
         toB f = text (secs (f e))
+
+    ov = text (show (round (ovFraction (resOutVar r) * 100) :: Int)) <> "%"
 
 data Row = Row { rowLabel  :: !String
                , rowDepth  :: !Int
