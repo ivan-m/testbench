@@ -12,6 +12,8 @@ benchmarks.
  -}
 module Criterion.Tree where
 
+import TestBench.LabelTree
+
 import Criterion.Analysis              (OutlierVariance (ovFraction),
                                         SampleAnalysis (..), analyseSample)
 import Criterion.Internal              (runAndAnalyseOne)
@@ -30,6 +32,17 @@ import Text.PrettyPrint.Boxes
 
 indentPerLevel :: Int
 indentPerLevel = 2
+-- | A more explicit tree-like structure for benchmarks than using
+--   Criterion's 'Benchmark' type.
+type BenchTree = LabelTree (String, Benchmarkable)
+
+type BenchForest = [BenchTree]
+
+flattenBenchTree :: BenchTree -> Benchmark
+flattenBenchTree = toCustomTree (uncurry bench) bgroup
+
+flattenBenchForest :: BenchForest -> [Benchmark]
+flattenBenchForest = map flattenBenchTree
 
 getResults :: Config -> String -> Benchmarkable -> IO (Maybe Results)
 getResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
