@@ -25,7 +25,7 @@ module Criterion.Tree
 import TestBench.LabelTree
 
 import Criterion.Analysis              (OutlierVariance (ovFraction),
-                                        SampleAnalysis (..), analyseSample)
+                                        SampleAnalysis (..))
 import Criterion.Internal              (runAndAnalyseOne)
 import Criterion.Measurement           (initializeTime, secs)
 import Criterion.Monad                 (withConfig)
@@ -53,8 +53,8 @@ flattenBenchForest = map flattenBenchTree
 
 benchmarkForest :: Config -> BenchForest -> IO ()
 benchmarkForest cfg bf = do initializeTime
-                            rows <- toRows cfg bf
-                            printBox (rowsToBox rows)
+                            rs <- toRows cfg bf
+                            printBox (rowsToBox rs)
 
 --------------------------------------------------------------------------------
 
@@ -105,7 +105,7 @@ getResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
 --------------------------------------------------------------------------------
 
 rowsToBox :: [Row] -> Box
-rowsToBox = hsep 2 center1
+rowsToBox = hsep columnGap center1
             . withHead (vcat left) (vcat right)
             . transpose
             . ((empty11:resHeaders):) -- Add header row

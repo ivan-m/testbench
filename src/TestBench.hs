@@ -68,7 +68,7 @@ module TestBench
 import Criterion.Tree
 import TestBench.LabelTree
 
-import Criterion              (Benchmark, Benchmarkable, nf, whnf)
+import Criterion              (Benchmarkable, nf, whnf)
 import Criterion.Main.Options (defaultConfig)
 import Test.HUnit.Base        (Assertion, Counts (..), Test (..), (@=?), (~:))
 import Test.HUnit.Text        (runTestTT)
