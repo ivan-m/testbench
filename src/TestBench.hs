@@ -1,5 +1,6 @@
-{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, RankNTypes,
-             ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds, FlexibleInstances, GeneralizedNewtypeDeriving,
+             MultiParamTypeClasses, RankNTypes, ScopedTypeVariables,
+             UndecidableInstances #-}
 
 {- |
    Module      : TestBench
@@ -38,6 +39,9 @@ module TestBench
     -- * Comparisons
   , compareFunc
   , compareFuncConstraint
+
+    -- ** Specifying constraints
+  , CUnion
 
     -- ** Comparison parameters
   , CompParams
@@ -293,6 +297,17 @@ compOp nm arg ci = Op { opName  = nm
                       , opBench = toBench ci (func ci) arg
                       , opTest  = toTest ci $ func ci arg
                       }
+
+-- | The union of two @(* -> 'Constraint')@ values.
+--
+--   Whilst @type EqNum a = ('Eq' a, 'Num' a)@ is a valid
+--   specificatoin of a 'Constraint' when using the @ConstraintKinds@
+--   extension, it cannot be used with 'compareFuncConstraint' as type
+--   aliases cannot be partially applied.
+--
+--   As such, you can use @type EqNum = CUnion Eq Num@ instead.
+class (c1 a, c2 a) => CUnion c1 c2 a
+instance (c1 a, c2 a) => CUnion c1 c2 a
 
 --------------------------------------------------------------------------------
 
