@@ -1,6 +1,10 @@
-{-# LANGUAGE ConstraintKinds, FlexibleInstances, GeneralizedNewtypeDeriving,
-             MultiParamTypeClasses, RankNTypes, ScopedTypeVariables,
-             UndecidableInstances #-}
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances,
+             GeneralizedNewtypeDeriving, MultiParamTypeClasses, RankNTypes,
+             ScopedTypeVariables, UndecidableInstances #-}
+
+#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE UndecidableSuperClasses #-}
+#endif
 
 {- |
    Module      : TestBench
