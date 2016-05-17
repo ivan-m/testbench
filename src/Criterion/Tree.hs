@@ -48,9 +48,17 @@ type BenchForest = [BenchTree]
 flattenBenchTree :: BenchTree -> Benchmark
 flattenBenchTree = toCustomTree (uncurry bench) bgroup
 
+-- | Remove the explicit tree-like structure into the implicit one
+--   used by Criterion.
+--
+--   Useful for embedding the results into an existing benchmark
+--   suite.
 flattenBenchForest :: BenchForest -> [Benchmark]
 flattenBenchForest = map flattenBenchTree
 
+-- | Run the specified benchmarks, printing the results (once they're
+--   all complete) to stdout in a tabular format for easier
+--   comparisons.
 benchmarkForest :: Config -> BenchForest -> IO ()
 benchmarkForest cfg bf = do initializeTime
                             rs <- toRows cfg bf

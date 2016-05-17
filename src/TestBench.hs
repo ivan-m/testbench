@@ -100,6 +100,7 @@ module TestBench
   , noTests
 
     -- ** Specify comparisons
+  , Comparison
   , comp
   , compBench
   , compTest
@@ -166,6 +167,7 @@ toTests = TestList . opForestTo opTest (~:) (~:)
 newtype TestBenchM r = TestBenchM { getOpTrees :: WriterT [OpTree] IO r}
                      deriving (Functor, Applicative, Monad, MonadIO)
 
+-- | An environment for combining testing and benchmarking.
 type TestBench = TestBenchM ()
 
 makeOpTree :: String -> TestBench -> IO OpTree
@@ -184,12 +186,19 @@ singleTree = treeList . (:[])
 runTestBench :: TestBench -> IO [OpTree]
 runTestBench = execWriterT . getOpTrees
 
--- | Obtain the resulting test and benchmarks from the specified
+-- | Obtain the resulting tests and benchmarks from the specified
 --   @TestBench@.
 getTestBenches :: TestBench -> IO (Test, BenchForest)
 getTestBenches = fmap (toTests &&& toBenchmarks) . runTestBench
 
--- | Run the specified benchmarks if and only if all tests pass.
+-- | Run the specified benchmarks if and only if all tests pass, using
+--   a comparison-based format for benchmarking output.
+--
+--   Please note that this is currently very simplistic: no
+--   parameters, configuration, etc.  Also, benchmark results will not
+--   be shown until all benchmarks are complete.
+--
+--   For more control, use 'getTestBenches'.
 testBench :: TestBench -> IO ()
 testBench tb = do (tst,bf) <- getTestBenches tb
                   tcnts <- runTestTT tst
@@ -198,9 +207,13 @@ testBench tb = do (tst,bf) <- getTestBenches tb
 
 -- -----------------------------------------------------------------------------
 
+-- | Create a single benchmark evaluated to normal form, where the
+--   results should equal the value specified.
 nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
 nfEq = mkTestBench (Just .: nf) . (Just .: (@=?))
 
+-- | Create a single benchmark evaluated to weak head normal form,
+--   where the results should equal the value specified.
 whnfEq :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
 whnfEq = mkTestBench (Just .: whnf) . (Just .: (@=?))
 
@@ -255,21 +268,36 @@ compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci c
     withOps' = appEndo (withOps ci)
 
 -- TODO: work out how to fix it if multiple test setting functions are called; might need a Last in here.
+-- | Monoidally build up the parameters used to control a 'Comparison'
+--   environment.
+--
+--   This will typically be a combination of 'benchNormalForm' with
+--   either 'baseline' or 'testWith'.
 newtype CompParams ca b = CP { unCP :: ( CompInfo ca b -> Endo [Operation]
                                        , Endo (CompInfo ca b)
                                        )
                              }
                         deriving (Monoid)
 
+-- | Evaluate all benchmarks to normal form.
 benchNormalForm :: (NFData b) => CompParams ca b
 benchNormalForm = withBenchMode nf
 
+-- | Allow specifying how benchmarks should be evaluated.  This may
+--   allow usage of methods such as @nfIO@, but this has not been
+--   tested as yet.
 withBenchMode :: (forall a. (ca a) => (a -> b) -> a -> Benchmarkable) -> CompParams ca b
 withBenchMode toB = CP (mempty, Endo (\ci -> ci { toBench = Just .: toB }))
 
+-- | Don't run any benchmarks.  I'm not sure why you'd want to do this
+--   as there's surely easier\/better testing environments available,
+--   but this way it's possible.
 noBenchmarks :: CompParams ca b
 noBenchmarks = CP (mempty, Endo (\ci -> ci { toBench = \_ _ -> Nothing }))
 
+-- | Don't run any tests.  This isn't recommended, but could be useful
+--   if all you want to do is run comparisons (potentially because no
+--   meaningful tests are possible).
 noTests :: CompParams ca b
 noTests = CP (mempty, Endo (\ci -> ci { toTest = const Nothing }))
 
@@ -345,7 +373,7 @@ compOp nm arg ci = Op { opName  = nm
 -- | The union of two @(* -> 'Constraint')@ values.
 --
 --   Whilst @type EqNum a = ('Eq' a, 'Num' a)@ is a valid
---   specificatoin of a 'Constraint' when using the @ConstraintKinds@
+--   specification of a 'Constraint' when using the @ConstraintKinds@
 --   extension, it cannot be used with 'compareFuncConstraint' as type
 --   aliases cannot be partially applied.
 --
