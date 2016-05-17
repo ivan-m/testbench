@@ -31,7 +31,7 @@ For example:
 >   -- Polymorphic comparisons.
 >   --
 >   -- Currently it isn't possible to use a Proxy as the argument to
->   -- the function (this will probably require Injective Type Familes
+>   -- the function (this will probably require Injective Type Families
 >   -- in GHC 8.0), so we're using 'undefined' to specify the type.
 >   compareFuncConstraint (Proxy :: Proxy (CUnion Eq Num))
 >                         "Number type equality"
