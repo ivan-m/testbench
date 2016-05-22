@@ -115,10 +115,9 @@ results from comparison-style benchmarks:
   apparent when results are displayed.
 
 * No easy way to actually _compare_ benchmark values: there used to be
-  a `bcompare` function (and when work on _testbench_ was first
-  started it was intended to take advantage of this function) but it
-  is no longer present.  As such, comparisons must be done by hand by
-  comparing the results visually.
+  a `bcompare` function but it hasn't been available since version
+  1.0.0.0 came out in August 2014.  As such, comparisons must be done
+  by hand by comparing the results visually.
 
 * Having more than a few benchmarks together produces a lot of output
   (either to the terminal or a resulting report): combined with the
