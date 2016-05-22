@@ -28,6 +28,7 @@ For example:
 >               (\n -> length (replicate n ()) == n)
 >               (testWith (@? "Not as long as specified") `mappend` benchNormalForm)
 >               (mapM_ (\n -> comp ("len == " ++ show n) n) [1..5])
+>
 >   -- Polymorphic comparisons.
 >   --
 >   -- Currently it isn't possible to use a Proxy as the argument to
