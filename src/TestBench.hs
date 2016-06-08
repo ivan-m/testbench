@@ -263,10 +263,9 @@ compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci c
              , toTest  = const Nothing
              }
 
-    (withOps , Endo mkCI) = unCP params
-    ci = mkCI ci0
+    ci = appEndo (mkOps params) ci0
 
-    withOps' = appEndo (withOps ci)
+    withOps' = appEndo (withOps params ci)
 
 -- TODO: work out how to fix it if multiple test setting functions are called; might need a Last in here.
 -- | Monoidally build up the parameters used to control a 'Comparison'
@@ -274,11 +273,23 @@ compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci c
 --
 --   This will typically be a combination of 'benchNormalForm' with
 --   either 'baseline' or 'testWith'.
-newtype CompParams ca b = CP { unCP :: ( CompInfo ca b -> Endo [Operation]
-                                       , Endo (CompInfo ca b)
-                                       )
-                             }
-                        deriving (Monoid)
+data CompParams ca b = CP { withOps :: CompInfo ca b -> Endo [Operation]
+                          , mkOps   :: Endo (CompInfo ca b)
+                          }
+
+instance Monoid (CompParams ca b) where
+  mempty = CP { withOps = mempty
+              , mkOps   = mempty
+              }
+
+  mappend cp1 cp2 = CP { withOps = mappendBy withOps
+                       , mkOps   = mappendBy mkOps
+                       }
+    where
+      mappendBy f = mappend (f cp1) (f cp2)
+
+mkOpsFrom :: (CompInfo ca b -> CompInfo ca b) -> CompParams ca b
+mkOpsFrom f = mempty { mkOps = Endo f }
 
 -- | Evaluate all benchmarks to normal form.
 benchNormalForm :: (NFData b) => CompParams ca b
@@ -288,19 +299,19 @@ benchNormalForm = withBenchMode nf
 --   allow usage of methods such as @nfIO@, but this has not been
 --   tested as yet.
 withBenchMode :: (forall a. (ca a) => (a -> b) -> a -> Benchmarkable) -> CompParams ca b
-withBenchMode toB = CP (mempty, Endo (\ci -> ci { toBench = Just .: toB }))
+withBenchMode toB = mkOpsFrom (\ci -> ci { toBench = Just .: toB })
 
 -- | Don't run any benchmarks.  I'm not sure why you'd want to do this
 --   as there's surely easier\/better testing environments available,
 --   but this way it's possible.
 noBenchmarks :: CompParams ca b
-noBenchmarks = CP (mempty, Endo (\ci -> ci { toBench = \_ _ -> Nothing }))
+noBenchmarks = mkOpsFrom (\ci -> ci { toBench = \_ _ -> Nothing })
 
 -- | Don't run any tests.  This isn't recommended, but could be useful
 --   if all you want to do is run comparisons (potentially because no
 --   meaningful tests are possible).
 noTests :: CompParams ca b
-noTests = CP (mempty, Endo (\ci -> ci { toTest = const Nothing }))
+noTests = mkOpsFrom (\ci -> ci { toTest = const Nothing })
 
 -- | Specify a sample baseline value to benchmark and test against
 --   (such that the result of applying the function to this @a@ is
@@ -309,7 +320,9 @@ noTests = CP (mempty, Endo (\ci -> ci { toTest = const Nothing }))
 --   You shouldn't specify this more than once, nor mix it with
 --   'noTests' or 'testWith'.
 baseline :: (ca a, Eq b, Show b) => String -> a -> CompParams ca b
-baseline nm arg = CP (addOp, Endo setTest)
+baseline nm arg = CP { withOps = addOp
+                     , mkOps   = Endo setTest
+                     }
   where
     opFrom ci = Op { opName  = nm
                    , opBench = toBench ci (func ci) arg
@@ -325,7 +338,7 @@ baseline nm arg = CP (addOp, Endo setTest)
 --   Note that the last statement between 'testWith', 'baseline' and
 --   'noTests' \"wins\" in specifying which testing (if any) to do.
 testWith :: (b -> Assertion) -> CompParams ca b
-testWith f = CP (mempty, Endo (\ci -> ci { toTest = Just . f }))
+testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 
 data CompInfo ca b = CI { func    :: (forall a. (ca a) => a -> b)
                         , toBench :: (forall a. (ca a) => (a -> b) -> a -> Maybe Benchmarkable)
