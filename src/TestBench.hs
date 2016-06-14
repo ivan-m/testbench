@@ -95,6 +95,10 @@ module TestBench
   , testWith
   , noTests
 
+    -- *** Control function weighing
+  , GetWeight
+  , weigh
+
     -- ** Specify comparisons
   , Comparison
   , comp
@@ -114,6 +118,7 @@ import Criterion              (Benchmarkable, nf, whnf)
 import Criterion.Main.Options (defaultConfig)
 import Test.HUnit.Base        (Assertion, Counts (..), Test (..), (@=?), (~:))
 import Test.HUnit.Text        (runTestTT)
+import Weigh                  (weighFunc)
 
 import Control.Applicative             (liftA2)
 import Control.Arrow                   ((&&&))
@@ -123,6 +128,7 @@ import Control.Monad.IO.Class          (MonadIO (liftIO))
 import Control.Monad.Trans.Class       (lift)
 import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer.Lazy (WriterT, execWriterT, tell)
+import Data.Int                        (Int64)
 import Data.Maybe                      (mapMaybe)
 import Data.Monoid                     (Endo (..))
 import Data.Proxy                      (Proxy (..))
@@ -133,8 +139,13 @@ import Data.Proxy                      (Proxy (..))
 --   and/or test.
 data Operation = Op { opName  :: !String
                     , opBench :: !(Maybe Benchmarkable)
+                    , opWeigh :: !(Maybe GetWeight)
                     , opTest  :: !(Maybe Assertion)
                     }
+
+-- | The results from measuring memory usage: bytes allocated and
+--   garbage collections.
+type GetWeight = IO (Int64, Int64)
 
 -- | A tree of operations.
 type OpTree = LabelTree Operation
@@ -206,25 +217,34 @@ testBench tb = do (tst,bf) <- getTestBenches tb
 
 -- | Create a single benchmark evaluated to normal form, where the
 --   results should equal the value specified.
+--
+--   Will also weigh the function.
 nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-nfEq = mkTestBench (Just .: nf) . (Just .: (@=?))
+nfEq = mkTestBench (Just .: nf) (Just .: weighFunc) . (Just .: (@=?))
 
 -- | Create a single benchmark evaluated to weak head normal form,
 --   where the results should equal the value specified.
 whnfEq :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-whnfEq = mkTestBench (Just .: whnf) . (Just .: (@=?))
+whnfEq = mkTestBench (Just .: whnf) (const (const Nothing)) . (Just .: (@=?))
 
 -- | A way of writing custom testing/benchmarking statements.  You
 --   will probably want to use one of the pre-defined versions
 --   instead.
-mkTestBench :: ((a -> b) -> a -> Maybe Benchmarkable) -> (b -> Maybe Assertion)
+mkTestBench :: ((a -> b) -> a -> Maybe Benchmarkable)
+                  -- ^ Define the benchmark to be performed, if any.
+               -> ((a -> b) -> a -> Maybe GetWeight)
+                  -- ^ If a benchmark is performed, should its memory
+                  --   usage also be calculated?
+               -> (b -> Maybe Assertion)
+                  -- ^ Should the result be checked?
                -> (a -> b) -> String -> a -> TestBench
-mkTestBench toB checkRes fn nm arg = singleTree
-                                     . Leaf
-                                     $ Op { opName  = nm
-                                          , opBench = toB fn arg
-                                          , opTest  = checkRes (fn arg)
-                                          }
+mkTestBench toB w checkRes fn nm arg = singleTree
+                                       . Leaf
+                                       $ Op { opName  = nm
+                                            , opBench = toB fn arg
+                                            , opWeigh = w fn arg
+                                            , opTest  = checkRes (fn arg)
+                                            }
 
 --------------------------------------------------------------------------------
 
@@ -253,6 +273,7 @@ compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci c
     ci0 :: CompInfo ca b
     ci0 = CI { func    = f
              , toBench = Just .: whnf
+             , toWeigh = const (const Nothing)
              , toTest  = const Nothing
              }
 
@@ -313,12 +334,13 @@ noTests = mkOpsFrom (\ci -> ci { toTest = const Nothing })
 --   You shouldn't specify this more than once, nor mix it with
 --   'noTests' or 'testWith'.
 baseline :: (ca a, Eq b, Show b) => String -> a -> CompParams ca b
-baseline nm arg = CP { withOps = addOp
-                     , mkOps   = Endo setTest
-                     }
+baseline nm arg = mempty { withOps = addOp
+                         , mkOps   = Endo setTest
+                         }
   where
     opFrom ci = Op { opName  = nm
                    , opBench = toBench ci (func ci) arg
+                   , opWeigh = toWeigh ci (func ci) arg
                    , opTest  = Nothing
                    }
 
@@ -333,8 +355,13 @@ baseline nm arg = CP { withOps = addOp
 testWith :: (b -> Assertion) -> CompParams ca b
 testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 
+-- | Calculate memory usage of the various parameters.
+weigh :: (NFData b) => CompParams ca b
+weigh = mkOpsFrom (\ci -> ci { toWeigh = Just .: weighFunc })
+
 data CompInfo ca b = CI { func    :: (forall a. (ca a) => a -> b)
                         , toBench :: (forall a. (ca a) => (a -> b) -> a -> Maybe Benchmarkable)
+                        , toWeigh :: (forall a. (ca a) => (a -> b) -> a -> Maybe GetWeight)
                         , toTest  :: (b -> Maybe Assertion)
                         }
 
@@ -374,6 +401,7 @@ compWith f nm arg = ComparisonM $ do ci <- ask
 compOp :: (ca a) => String -> a -> CompInfo ca b -> Operation
 compOp nm arg ci = Op { opName  = nm
                       , opBench = toBench ci (func ci) arg
+                      , opWeigh = toWeigh ci (func ci) arg
                       , opTest  = toTest ci $ func ci arg
                       }
 
