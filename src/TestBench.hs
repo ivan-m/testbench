@@ -131,9 +131,9 @@ import Data.Proxy                      (Proxy (..))
 
 -- | An individual operation potentially consisting of a benchmark
 --   and/or test.
-data Operation = Op { opName  :: String
-                    , opBench :: Maybe Benchmarkable
-                    , opTest  :: Maybe Assertion
+data Operation = Op { opName  :: !String
+                    , opBench :: !(Maybe Benchmarkable)
+                    , opTest  :: !(Maybe Assertion)
                     }
 
 -- | A tree of operations.
