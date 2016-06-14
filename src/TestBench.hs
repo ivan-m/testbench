@@ -110,8 +110,8 @@ module TestBench
   , SameAs
   ) where
 
-import Criterion.Tree
 import TestBench.Constraints
+import TestBench.Evaluate
 import TestBench.LabelTree
 
 import Criterion              (Benchmarkable, nf, whnf)

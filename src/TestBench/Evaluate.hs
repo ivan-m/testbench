@@ -1,17 +1,17 @@
 {-# LANGUAGE BangPatterns, OverloadedStrings #-}
 
 {- |
-   Module      : Criterion.Tree
-   Description : Tree-based representation for Criterion
+   Module      : TestBench.Evaluate
+   Description : Tree-based representation for Criterion and Weigh
    Copyright   : (c) Ivan Lazar Miljenovic
    License     : MIT
    Maintainer  : Ivan.Miljenovic@gmail.com
 
 An extremely simple rose tree-based representation of criterion
-benchmarks.
+benchmarks and weigh measurements.
 
  -}
-module Criterion.Tree
+module TestBench.Evaluate
   ( -- * Types
     BenchTree
   , BenchForest
