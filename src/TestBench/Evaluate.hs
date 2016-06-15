@@ -46,7 +46,7 @@ type BenchTree = LabelTree (String, Benchmarkable)
 type BenchForest = [BenchTree]
 
 flattenBenchTree :: BenchTree -> Benchmark
-flattenBenchTree = toCustomTree (uncurry bench) bgroup
+flattenBenchTree = foldLTree bgroup . fmap (uncurry bench)
 
 -- | Remove the explicit tree-like structure into the implicit one
 --   used by Criterion.

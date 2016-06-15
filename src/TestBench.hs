@@ -150,24 +150,14 @@ type GetWeight = IO (Int64, Int64)
 -- | A tree of operations.
 type OpTree = LabelTree Operation
 
-opTreeTo :: (Operation -> Maybe a) -> OpTree -> Maybe (LabelTree (String, a))
-opTreeTo f = go
-  where
-    go tr = case tr of
-              Leaf op       -> Leaf <$> liftA2 (fmap . (,)) opName f op
-              Branch lb trs -> case mapMaybe go trs of
-                                 []   -> Nothing
-                                 trs' -> Just (Branch lb trs')
-
-opForestTo :: (Operation -> Maybe a) -> (String -> a -> b) -> (String -> [b] -> b)
-              -> [OpTree] -> [b]
-opForestTo f lf br = mapMaybe (fmap (toCustomTree (uncurry lf) br) . opTreeTo f)
-
 toBenchmarks :: [OpTree] -> BenchForest
-toBenchmarks = mapMaybe (opTreeTo opBench)
+toBenchmarks = mapMaybe (mapMaybeTree (withName (,) opBench))
 
 toTests :: [OpTree] -> Test
-toTests = TestList . opForestTo opTest (~:) (~:)
+toTests = TestList . mapMaybeForest (withName (~:) opTest) (~:)
+
+withName :: (String -> a -> b) -> (Operation -> Maybe a) -> Operation -> Maybe b
+withName jn mf op = jn (opName op) <$> mf op
 
 -- -----------------------------------------------------------------------------
 
