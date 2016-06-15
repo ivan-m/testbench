@@ -68,7 +68,7 @@ benchmarkForest cfg bf = do initializeTime
 
 data Row = Row { rowLabel  :: !String
                , rowDepth  :: !Int
-               , rowResult :: !(Maybe Results)
+               , rowResult :: !(Maybe BenchResults)
                }
   deriving (Eq, Show, Read)
 
@@ -85,24 +85,24 @@ toRows cfg = f2r 0
                                    <$> f2r (d+1) ts
 
 makeRow :: Config -> String -> Int -> Benchmarkable -> IO Row
-makeRow cfg lbl d b = Row lbl d <$> getResults cfg lbl b
+makeRow cfg lbl d b = Row lbl d <$> getBenchResults cfg lbl b
 
-data Results = Results { resMean   :: !Estimate
-                       , resStdDev :: !Estimate
-                       , resOutVar :: !OutlierVariance
-                       }
+data BenchResults = BenchResults { resMean   :: !Estimate
+                                 , resStdDev :: !Estimate
+                                 , resOutVar :: !OutlierVariance
+                                 }
   deriving (Eq, Show, Read)
 
-getResults :: Config -> String -> Benchmarkable -> IO (Maybe Results)
-getResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
-                          return $ case dr of
-                                     Measurement{} -> Nothing
-                                     Analysed rpt  -> Just $
-                                       let sa = reportAnalysis rpt
-                                       in Results { resMean   = anMean sa
-                                                  , resStdDev = anStdDev sa
-                                                  , resOutVar = anOutlierVar sa
-                                                  }
+getBenchResults :: Config -> String -> Benchmarkable -> IO (Maybe BenchResults)
+getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
+                               return $ case dr of
+                                          Measurement{} -> Nothing
+                                          Analysed rpt  -> Just $
+                                            let sa = reportAnalysis rpt
+                                            in BenchResults { resMean   = anMean sa
+                                                            , resStdDev = anStdDev sa
+                                                            , resOutVar = anOutlierVar sa
+                                                            }
 
   where
     cfg' = cfg { verbosity = Quiet }
@@ -137,7 +137,7 @@ columnGap = 2
 resHeaders :: [Box]
 resHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
 
-resToBoxes :: Results -> [Box]
+resToBoxes :: BenchResults -> [Box]
 resToBoxes r = e2b (resMean r) (e2b (resStdDev r) [ov])
   where
     e2b e bs = toB estPoint : toB estLowerBound : toB estUpperBound : bs
