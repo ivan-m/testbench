@@ -13,13 +13,16 @@ benchmarks and weigh measurements.
  -}
 module TestBench.Evaluate
   ( -- * Types
-    BenchTree
-  , BenchForest
+    EvalTree
+  , EvalForest
+  , Eval(..)
+    -- ** Weights
+  , GetWeight
     -- * Conversion
   , flattenBenchTree
   , flattenBenchForest
     -- * Running benchmarks
-  , benchmarkForest
+  , evalForest
   ) where
 
 import TestBench.LabelTree
@@ -34,58 +37,106 @@ import Criterion.Types                 (Benchmark, Benchmarkable, Config (..),
                                         Verbosity (..), bench, bgroup)
 import Statistics.Resampling.Bootstrap (Estimate (..))
 
+import Control.Applicative    (liftA2)
+import Control.Monad          (when)
+import Data.Int               (Int64)
 import Data.List              (transpose)
+import Data.Maybe             (isJust, mapMaybe)
 import Text.PrettyPrint.Boxes
 
 --------------------------------------------------------------------------------
 
 -- | A more explicit tree-like structure for benchmarks than using
 --   Criterion's 'Benchmark' type.
-type BenchTree = LabelTree (String, Benchmarkable)
+type EvalTree = LabelTree Eval
 
-type BenchForest = [BenchTree]
+type EvalForest = [EvalTree]
 
-flattenBenchTree :: BenchTree -> Benchmark
-flattenBenchTree = foldLTree bgroup . fmap (uncurry bench)
+data Eval = Eval { eName  :: !String
+                 , eBench :: !(Maybe Benchmarkable)
+                 , eWeigh :: !(Maybe GetWeight)
+                 }
+
+-- | The results from measuring memory usage: bytes allocated and
+--   garbage collections.
+type GetWeight = IO (Int64, Int64)
+
+flattenBenchTree :: EvalTree -> Maybe Benchmark
+flattenBenchTree = fmap (foldLTree bgroup)
+                   . mapMaybeTree (liftA2 fmap (bench . eName) eBench)
 
 -- | Remove the explicit tree-like structure into the implicit one
 --   used by Criterion.
 --
 --   Useful for embedding the results into an existing benchmark
 --   suite.
-flattenBenchForest :: BenchForest -> [Benchmark]
-flattenBenchForest = map flattenBenchTree
+flattenBenchForest :: EvalForest -> [Benchmark]
+flattenBenchForest = mapMaybe flattenBenchTree
 
 -- | Run the specified benchmarks, printing the results (once they're
 --   all complete) to stdout in a tabular format for easier
 --   comparisons.
-benchmarkForest :: Config -> BenchForest -> IO ()
-benchmarkForest cfg bf = do initializeTime
-                            rs <- toRows cfg bf
-                            printBox (rowsToBox rs)
+evalForest :: Config -> EvalForest -> IO ()
+evalForest cfg ef = do when (hasBench ep) initializeTime
+                       rs <- toRows ec ef
+                       printBox (rowsToBox rs)
+  where
+    ep = checkForest ef
+    ec = EC cfg ep
+
+data EvalParams = EP { hasBench :: !Bool
+                     , hasWeigh :: !Bool
+                     }
+                deriving (Eq, Ord, Show, Read)
+
+instance Monoid EvalParams where
+  mempty = EP { hasBench = False
+              , hasWeigh = False
+              }
+
+  mappend ec1 ec2 = EP { hasBench = mappendBy hasBench
+                       , hasWeigh = mappendBy hasWeigh
+                       }
+    where
+      mappendBy f = f ec1 || f ec2
+
+checkForest :: EvalForest -> EvalParams
+checkForest = mconcat . map (foldLTree (const mconcat) . fmap calcConfig)
+  where
+    calcConfig e = EP { hasBench = isJust (eBench e)
+                      , hasWeigh = isJust (eWeigh e)
+                      }
+
+data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
+                     , evalParam   :: {-# UNPACK #-}!EvalParams
+                     }
+                deriving (Eq, Show, Read)
 
 --------------------------------------------------------------------------------
 
 data Row = Row { rowLabel  :: !String
-               , rowDepth  :: !Int
+               , rowDepth  :: {-# UNPACK #-} !Int
                , rowResult :: !(Maybe BenchResults)
                }
   deriving (Eq, Show, Read)
 
-toRows :: Config -> BenchForest -> IO [Row]
+toRows :: EvalConfig -> EvalForest -> IO [Row]
 toRows cfg = f2r 0
   where
-    f2r :: Int -> BenchForest -> IO [Row]
+    f2r :: Int -> EvalForest -> IO [Row]
     f2r !d = fmap concat . mapM (t2r d)
 
-    t2r :: Int -> BenchTree -> IO [Row]
+    t2r :: Int -> EvalTree -> IO [Row]
     t2r !d bt = case bt of
-                  Leaf (lbl,b)  -> (:[]) <$> makeRow cfg lbl d b
+                  Leaf   e      -> (:[]) <$> makeRow cfg d e
                   Branch lbl ts -> (Row lbl d Nothing :)
                                    <$> f2r (d+1) ts
 
-makeRow :: Config -> String -> Int -> Benchmarkable -> IO Row
-makeRow cfg lbl d b = Row lbl d <$> getBenchResults cfg lbl b
+makeRow :: EvalConfig -> Int -> Eval -> IO Row
+makeRow cfg d e = Row lbl d
+                  <$> maybe (return Nothing) (getBenchResults (benchConfig cfg) lbl) (eBench e)
+  where
+    lbl = eName e
 
 data BenchResults = BenchResults { resMean   :: !Estimate
                                  , resStdDev :: !Estimate

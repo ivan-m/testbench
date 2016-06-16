@@ -58,10 +58,10 @@ module TestBench
   , testBench
     -- ** Running manually
   , getTestBenches
-  , BenchTree
-  , BenchForest
+  , EvalTree
+  , EvalForest
   , flattenBenchForest
-  , benchmarkForest
+  , evalForest
     -- ** Lower-level types
   , TestBenchM
   , OpTree
@@ -120,7 +120,6 @@ import Test.HUnit.Base        (Assertion, Counts (..), Test (..), (@=?), (~:))
 import Test.HUnit.Text        (runTestTT)
 import Weigh                  (weighFunc)
 
-import Control.Applicative             (liftA2)
 import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData (..))
 import Control.Monad                   (when)
@@ -128,7 +127,6 @@ import Control.Monad.IO.Class          (MonadIO (liftIO))
 import Control.Monad.Trans.Class       (lift)
 import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer.Lazy (WriterT, execWriterT, tell)
-import Data.Int                        (Int64)
 import Data.Maybe                      (mapMaybe)
 import Data.Monoid                     (Endo (..))
 import Data.Proxy                      (Proxy (..))
@@ -143,15 +141,15 @@ data Operation = Op { opName  :: !String
                     , opTest  :: !(Maybe Assertion)
                     }
 
--- | The results from measuring memory usage: bytes allocated and
---   garbage collections.
-type GetWeight = IO (Int64, Int64)
-
 -- | A tree of operations.
 type OpTree = LabelTree Operation
 
-toBenchmarks :: [OpTree] -> BenchForest
-toBenchmarks = mapMaybe (mapMaybeTree (withName (,) opBench))
+toBenchmarks :: [OpTree] -> EvalForest
+toBenchmarks = mapMaybe (mapMaybeTree (withName (uncurry . Eval) toEval))
+  where
+    toEval op = case (opBench op, opWeigh op) of
+                  (Nothing, Nothing) -> Nothing
+                  ops                -> Just ops
 
 toTests :: [OpTree] -> Test
 toTests = TestList . mapMaybeForest (withName (~:) opTest) (~:)
@@ -186,7 +184,7 @@ runTestBench = execWriterT . getOpTrees
 
 -- | Obtain the resulting tests and benchmarks from the specified
 --   @TestBench@.
-getTestBenches :: TestBench -> IO (Test, BenchForest)
+getTestBenches :: TestBench -> IO (Test, EvalForest)
 getTestBenches = fmap (toTests &&& toBenchmarks) . runTestBench
 
 -- | Run the specified benchmarks if and only if all tests pass, using
@@ -201,7 +199,7 @@ testBench :: TestBench -> IO ()
 testBench tb = do (tst,bf) <- getTestBenches tb
                   tcnts <- runTestTT tst
                   when (errors tcnts == 0 && failures tcnts == 0)
-                       (benchmarkForest defaultConfig bf) -- TODO: make this configurable
+                       (evalForest defaultConfig bf) -- TODO: make this configurable
 
 -- -----------------------------------------------------------------------------
 
