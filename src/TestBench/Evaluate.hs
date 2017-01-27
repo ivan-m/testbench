@@ -28,15 +28,15 @@ module TestBench.Evaluate
 
 import TestBench.LabelTree
 
-import Criterion.Analysis              (OutlierVariance (ovFraction),
-                                        SampleAnalysis (..))
+import Criterion.Analysis              (OutlierVariance(ovFraction),
+                                        SampleAnalysis(..))
 import Criterion.Internal              (runAndAnalyseOne)
 import Criterion.Measurement           (initializeTime, secs)
 import Criterion.Monad                 (withConfig)
-import Criterion.Types                 (Benchmark, Benchmarkable, Config (..),
-                                        DataRecord (..), Report (..),
-                                        Verbosity (..), bench, bgroup)
-import Statistics.Resampling.Bootstrap (Estimate (..))
+import Criterion.Types                 (Benchmark, Benchmarkable, Config(..),
+                                        DataRecord(..), Report(..),
+                                        Verbosity(..), bench, bgroup)
+import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
 import Control.Applicative    (liftA2)
@@ -123,7 +123,7 @@ checkForest = mconcat . map (foldLTree (const mconcat) . fmap calcConfig)
                       }
 
 data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
-                     , evalParam   :: {-# UNPACK #-}!EvalParams
+                     , _evalParam  :: {-# UNPACK #-}!EvalParams
                      }
                 deriving (Eq, Show, Read)
 

@@ -116,19 +116,19 @@ import TestBench.LabelTree
 
 import Criterion              (Benchmarkable, nf, whnf)
 import Criterion.Main.Options (defaultConfig)
-import Test.HUnit.Base        (Assertion, Counts (..), Test (..), (@=?), (~:))
+import Test.HUnit.Base        (Assertion, Counts(..), Test(..), (@=?), (~:))
 import Test.HUnit.Text        (runTestTT)
 
 import Control.Arrow                   ((&&&))
-import Control.DeepSeq                 (NFData (..))
+import Control.DeepSeq                 (NFData(..))
 import Control.Monad                   (when)
-import Control.Monad.IO.Class          (MonadIO (liftIO))
+import Control.Monad.IO.Class          (MonadIO(liftIO))
 import Control.Monad.Trans.Class       (lift)
 import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer.Lazy (WriterT, execWriterT, tell)
 import Data.Maybe                      (mapMaybe)
-import Data.Monoid                     (Endo (..))
-import Data.Proxy                      (Proxy (..))
+import Data.Monoid                     (Endo(..))
+import Data.Proxy                      (Proxy(..))
 
 -- -----------------------------------------------------------------------------
 
