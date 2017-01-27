@@ -118,7 +118,6 @@ import Criterion              (Benchmarkable, nf, whnf)
 import Criterion.Main.Options (defaultConfig)
 import Test.HUnit.Base        (Assertion, Counts (..), Test (..), (@=?), (~:))
 import Test.HUnit.Text        (runTestTT)
-import Weigh                  (weighFunc)
 
 import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData (..))
@@ -208,7 +207,7 @@ testBench tb = do (tst,bf) <- getTestBenches tb
 --
 --   Will also weigh the function.
 nfEq :: (NFData b, Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-nfEq = mkTestBench (Just .: nf) (Just .: weighFunc) . (Just .: (@=?))
+nfEq = mkTestBench (Just .: nf) (Just .: getWeight) . (Just .: (@=?))
 
 -- | Create a single benchmark evaluated to weak head normal form,
 --   where the results should equal the value specified.
@@ -345,7 +344,7 @@ testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 
 -- | Calculate memory usage of the various parameters.
 weigh :: (NFData b) => CompParams ca b
-weigh = mkOpsFrom (\ci -> ci { toWeigh = Just .: weighFunc })
+weigh = mkOpsFrom (\ci -> ci { toWeigh = Just .: getWeight })
 
 data CompInfo ca b = CI { func    :: (forall a. (ca a) => a -> b)
                         , toBench :: (forall a. (ca a) => (a -> b) -> a -> Maybe Benchmarkable)

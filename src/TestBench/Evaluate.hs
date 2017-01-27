@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, OverloadedStrings #-}
+{-# LANGUAGE BangPatterns, GADTs, OverloadedStrings, RankNTypes #-}
 
 {- |
    Module      : TestBench.Evaluate
@@ -18,6 +18,7 @@ module TestBench.Evaluate
   , Eval(..)
     -- ** Weights
   , GetWeight
+  , getWeight
     -- * Conversion
   , flattenBenchTree
   , flattenBenchForest
@@ -36,8 +37,10 @@ import Criterion.Types                 (Benchmark, Benchmarkable, Config (..),
                                         DataRecord (..), Report (..),
                                         Verbosity (..), bench, bgroup)
 import Statistics.Resampling.Bootstrap (Estimate (..))
+import Weigh                           (weighFunc)
 
 import Control.Applicative    (liftA2)
+import Control.DeepSeq        (NFData)
 import Control.Monad          (when)
 import Data.Int               (Int64)
 import Data.List              (transpose)
@@ -57,9 +60,20 @@ data Eval = Eval { eName  :: !String
                  , eWeigh :: !(Maybe GetWeight)
                  }
 
--- | The results from measuring memory usage: bytes allocated and
---   garbage collections.
-type GetWeight = IO (Int64, Int64)
+-- | The results from measuring memory usage.
+data GetWeight where
+  GetWeight :: forall a b. (NFData b) => (a -> b) -> a -> GetWeight
+
+runGetWeight :: GetWeight -> IO Weight
+runGetWeight (GetWeight f a) = uncurry Weight <$> weighFunc f a
+
+data Weight = Weight { bytesAlloc :: !Int64
+                     , numGC      :: !Int64
+                     }
+            deriving (Eq, Ord, Show, Read)
+
+getWeight :: (NFData b) => (a -> b) -> a -> GetWeight
+getWeight = GetWeight
 
 flattenBenchTree :: EvalTree -> Maybe Benchmark
 flattenBenchTree = fmap (foldLTree bgroup)
@@ -117,6 +131,7 @@ data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
 data Row = Row { rowLabel  :: !String
                , rowDepth  :: {-# UNPACK #-} !Int
                , rowResult :: !(Maybe BenchResults)
+               , rowWeight :: !(Maybe Weight)
                }
   deriving (Eq, Show, Read)
 
@@ -129,12 +144,13 @@ toRows cfg = f2r 0
     t2r :: Int -> EvalTree -> IO [Row]
     t2r !d bt = case bt of
                   Leaf   e      -> (:[]) <$> makeRow cfg d e
-                  Branch lbl ts -> (Row lbl d Nothing :)
+                  Branch lbl ts -> (Row lbl d Nothing Nothing :)
                                    <$> f2r (d+1) ts
 
 makeRow :: EvalConfig -> Int -> Eval -> IO Row
 makeRow cfg d e = Row lbl d
                   <$> maybe (return Nothing) (getBenchResults (benchConfig cfg) lbl) (eBench e)
+                  <*> maybe (return Nothing) (fmap Just . runGetWeight) (eWeigh e)
   where
     lbl = eName e
 
