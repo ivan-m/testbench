@@ -98,7 +98,7 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
                        let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
                            ec = EC cfg ep'
                        rs <- toRows ec ef
-                       printBox (rowsToBox rs)
+                       printBox (rowsToBox ep' rs)
   where
     ep = checkForest ef
 
@@ -190,16 +190,16 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
 
 --------------------------------------------------------------------------------
 
-rowsToBox :: [Row] -> Box
-rowsToBox = hsep columnGap center1
-            . withHead (vcat left) (vcat right)
-            . transpose
-            . ((empty11:resHeaders):) -- Add header row
-            . map rowToBoxes
+rowsToBox :: EvalParams -> [Row] -> Box
+rowsToBox ep = hsep columnGap center1
+               . withHead (vcat left) (vcat right)
+               . transpose
+               . ((empty11:resHeaders ep):) -- Add header row
+               . map (rowToBoxes ep)
 
-rowToBoxes :: Row -> [Box]
-rowToBoxes r = moveRight (indentPerLevel * rowDepth r) (text (rowLabel r))
-               : resToBoxes r
+rowToBoxes :: EvalParams -> Row -> [Box]
+rowToBoxes ep r = moveRight (indentPerLevel * rowDepth r) (text (rowLabel r))
+                  : resToBoxes ep r
 
 empty11 :: Box
 empty11 = emptyBox 1 1 -- Can't use nullBox, as /some/ size is needed.
@@ -210,8 +210,14 @@ indentPerLevel = 2
 columnGap :: Int
 columnGap = 2
 
-resHeaders :: [Box]
-resHeaders = benchHeaders ++ weighHeaders
+resHeaders :: EvalParams -> [Box]
+resHeaders ep = mHdrs hasBench benchHeaders
+                . mHdrs hasWeigh weighHeaders
+                $ []
+  where
+    mHdrs p hdrs = if p ep
+                      then (hdrs++)
+                      else id
 
 benchHeaders :: [Box]
 benchHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
@@ -219,11 +225,17 @@ benchHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "O
 weighHeaders :: [Box]
 weighHeaders = ["AllocBytes", "NumGC"]
 
-resToBoxes :: Row -> [Box]
-resToBoxes r = maybe (blankHeaders benchHeaders) benchToBoxes (rowResult r)
-               ++ maybe (blankHeaders weighHeaders) weightToBoxes (rowWeight r)
+resToBoxes :: EvalParams -> Row -> [Box]
+resToBoxes ep r = mRes hasBench benchHeaders benchToBoxes rowResult
+                  . mRes hasWeigh weighHeaders weightToBoxes rowWeight
+                  $ []
   where
     blankHeaders = map (const empty11)
+
+    mRes :: (EvalParams -> Bool) -> [Box] -> (a -> [Box]) -> (Row -> Maybe a) -> [Box] -> [Box]
+    mRes p hdrs f v = if p ep
+                         then (maybe (blankHeaders hdrs) f (v r) ++)
+                         else id
 
 benchToBoxes :: BenchResults -> [Box]
 benchToBoxes r = e2b (resMean r) (e2b (resStdDev r) [ov])
