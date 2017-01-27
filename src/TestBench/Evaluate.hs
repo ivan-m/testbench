@@ -66,13 +66,8 @@ data Eval = Eval { eName  :: !String
 data GetWeight where
   GetWeight :: forall a b. (NFData b) => (a -> b) -> a -> GetWeight
 
-runGetWeight :: GetWeight -> IO (Maybe Weight)
-runGetWeight (GetWeight f a) = do
-  -- This should really be something that's cached...
-  hasStats <- getGCStatsEnabled
-  if hasStats
-     then Just . uncurry Weight <$> weighFunc f a
-     else return Nothing
+runGetWeight :: GetWeight -> IO Weight
+runGetWeight (GetWeight f a) = uncurry Weight <$> weighFunc f a
 
 data Weight = Weight { bytesAlloc :: !Int64
                      , numGC      :: !Int64
@@ -99,11 +94,13 @@ flattenBenchForest = mapMaybe flattenBenchTree
 --   comparisons.
 evalForest :: Config -> EvalForest -> IO ()
 evalForest cfg ef = do when (hasBench ep) initializeTime
+                       hasStats <- getGCStatsEnabled
+                       let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
+                           ec = EC cfg ep'
                        rs <- toRows ec ef
                        printBox (rowsToBox rs)
   where
     ep = checkForest ef
-    ec = EC cfg ep
 
 data EvalParams = EP { hasBench :: !Bool
                      , hasWeigh :: !Bool
@@ -129,7 +126,7 @@ checkForest = mconcat . map (foldLTree (const mconcat) . fmap calcConfig)
                       }
 
 data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
-                     , _evalParam  :: {-# UNPACK #-}!EvalParams
+                     , evalParam   :: {-# UNPACK #-}!EvalParams
                      }
                 deriving (Eq, Show, Read)
 
@@ -156,10 +153,17 @@ toRows cfg = f2r 0
 
 makeRow :: EvalConfig -> Int -> Eval -> IO Row
 makeRow cfg d e = Row lbl d
-                  <$> maybe (return Nothing) (getBenchResults (benchConfig cfg) lbl) (eBench e)
-                  <*> maybe (return Nothing) runGetWeight (eWeigh e)
+                  <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
+                  <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
   where
     lbl = eName e
+    ep = evalParam cfg
+
+    tryRun :: (EvalParams -> Bool) -> (Eval -> Maybe a) -> (a -> IO (Maybe b)) -> IO (Maybe b)
+    tryRun p f r =
+      if p ep
+         then maybe (return Nothing) r (f e)
+         else return Nothing
 
 data BenchResults = BenchResults { resMean   :: !Estimate
                                  , resStdDev :: !Estimate
