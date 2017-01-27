@@ -46,6 +46,7 @@ import Data.Int               (Int64)
 import Data.List              (transpose)
 import Data.Maybe             (isJust, mapMaybe)
 import Text.PrettyPrint.Boxes
+import Text.Printf            (printf)
 
 --------------------------------------------------------------------------------
 
@@ -188,9 +189,7 @@ rowsToBox = hsep columnGap center1
 
 rowToBoxes :: Row -> [Box]
 rowToBoxes r = moveRight (indentPerLevel * rowDepth r) (text (rowLabel r))
-               : maybe blankRes resToBoxes (rowResult r)
-  where
-    blankRes = map (const empty11) resHeaders
+               : resToBoxes r
 
 empty11 :: Box
 empty11 = emptyBox 1 1 -- Can't use nullBox, as /some/ size is needed.
@@ -202,16 +201,48 @@ columnGap :: Int
 columnGap = 2
 
 resHeaders :: [Box]
-resHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
+resHeaders = benchHeaders ++ weighHeaders
 
-resToBoxes :: BenchResults -> [Box]
-resToBoxes r = e2b (resMean r) (e2b (resStdDev r) [ov])
+benchHeaders :: [Box]
+benchHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
+
+weighHeaders :: [Box]
+weighHeaders = ["AllocBytes", "NumGC"]
+
+resToBoxes :: Row -> [Box]
+resToBoxes r = maybe (blankHeaders benchHeaders) benchToBoxes (rowResult r)
+               ++ maybe (blankHeaders weighHeaders) weightToBoxes (rowWeight r)
+  where
+    blankHeaders = map (const empty11)
+
+benchToBoxes :: BenchResults -> [Box]
+benchToBoxes r = e2b (resMean r) (e2b (resStdDev r) [ov])
   where
     e2b e bs = toB estPoint : toB estLowerBound : toB estUpperBound : bs
       where
         toB f = text (secs (f e))
 
     ov = text (show (round (ovFraction (resOutVar r) * 100) :: Int)) <> "%"
+
+weightToBoxes :: Weight -> [Box]
+weightToBoxes r = [ text (bytes (bytesAlloc r))
+                  , text (show (numGC r))
+                  ]
+
+-- | Human-readable description of the number of bytes used.  Assumed
+--   non-negative.
+bytes :: Int64 -> String
+bytes b  = printf "%.3f %sB" val p
+  where
+    prefixes = ["", "K", "M", "G", "T", "P", "E"] :: [String]
+
+    base = 1024 :: Num a => a
+
+    mult = floor (logBase (base :: Double) (fromIntegral b))
+
+    val = fromIntegral b / (base ^ mult)
+
+    p = prefixes !! mult
 
 --------------------------------------------------------------------------------
 
