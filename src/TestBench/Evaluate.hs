@@ -36,6 +36,7 @@ import Criterion.Monad                 (withConfig)
 import Criterion.Types                 (Benchmark, Benchmarkable, Config(..),
                                         DataRecord(..), Report(..),
                                         Verbosity(..), bench, bgroup)
+import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
@@ -65,8 +66,13 @@ data Eval = Eval { eName  :: !String
 data GetWeight where
   GetWeight :: forall a b. (NFData b) => (a -> b) -> a -> GetWeight
 
-runGetWeight :: GetWeight -> IO Weight
-runGetWeight (GetWeight f a) = uncurry Weight <$> weighFunc f a
+runGetWeight :: GetWeight -> IO (Maybe Weight)
+runGetWeight (GetWeight f a) = do
+  -- This should really be something that's cached...
+  hasStats <- getGCStatsEnabled
+  if hasStats
+     then Just . uncurry Weight <$> weighFunc f a
+     else return Nothing
 
 data Weight = Weight { bytesAlloc :: !Int64
                      , numGC      :: !Int64
@@ -151,7 +157,7 @@ toRows cfg = f2r 0
 makeRow :: EvalConfig -> Int -> Eval -> IO Row
 makeRow cfg d e = Row lbl d
                   <$> maybe (return Nothing) (getBenchResults (benchConfig cfg) lbl) (eBench e)
-                  <*> maybe (return Nothing) (fmap Just . runGetWeight) (eWeigh e)
+                  <*> maybe (return Nothing) runGetWeight (eWeigh e)
   where
     lbl = eName e
 
