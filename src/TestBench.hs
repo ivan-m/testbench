@@ -221,7 +221,9 @@ mkTestBench :: ((a -> b) -> a -> Maybe Benchmarkable)
                   -- ^ Define the benchmark to be performed, if any.
                -> ((a -> b) -> a -> Maybe GetWeight)
                   -- ^ If a benchmark is performed, should its memory
-                  --   usage also be calculated?
+                  --   usage also be calculated?  See the
+                  --   documentation for 'weigh' on how to get this
+                  --   work.
                -> (b -> Maybe Assertion)
                   -- ^ Should the result be checked?
                -> (a -> b) -> String -> a -> TestBench
@@ -343,6 +345,17 @@ testWith :: (b -> Assertion) -> CompParams ca b
 testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 
 -- | Calculate memory usage of the various parameters.
+--
+--   This requires running your executable with the @-T@ RTS flag.  To
+--   do so, you can either do:
+--
+--   * @my-program +RTS -T -RTS@ (may need to add @-rtsopts@ to your
+--     @ghc-options@ in your .cabal file)
+--
+--   * Add @-rtsopts -with-rtsopts=-T@ to your `ghc-options` field in
+--     your .cabal file.
+--
+--   If this flag is not provided, then this is equivalent to a no-op.
 weigh :: (NFData b) => CompParams ca b
 weigh = mkOpsFrom (\ci -> ci { toWeigh = Just .: getWeight })
 
