@@ -41,7 +41,8 @@ flag examples
 
 library
   exposed-modules:     TestBench
-  other-modules:       Criterion.Tree
+  other-modules:       TestBench.Constraints
+                     , TestBench.Evaluate
                      , TestBench.LabelTree
   build-depends:       base >=4.7 && <4.11
                      , boxes == 0.1.*
@@ -50,8 +51,16 @@ library
                      , HUnit
                      , statistics
                      , transformers
+                     , weigh == 0.0.*
+
+                     -- Not actually used, but need to specify this to
+                     -- help the solver in cabal-install-1.22 get a
+                     -- working install plan.
+                     , cassava == 0.4.*
   hs-source-dirs:      src
   default-language:    Haskell2010
+
+  ghc-options:       -Wall
 
 executable examples
   if flag(examples)
@@ -71,3 +80,5 @@ executable examples
                      , containers
                      , criterion
                      , HUnit
+
+  ghc-options:       -Wall

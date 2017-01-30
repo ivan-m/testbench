@@ -18,7 +18,7 @@ import TestBench
 import qualified Data.ByteString      as SB
 import qualified Data.ByteString.Lazy as LB
 import           Data.Monoid          ((<>))
-import           Data.Proxy           (Proxy (..))
+import           Data.Proxy           (Proxy(..))
 import qualified Data.Sequence        as Seq
 import           Data.Word            (Word8)
 import           Test.HUnit.Base      ((@=?), (@?))
@@ -68,7 +68,7 @@ instance Sequential LB.ByteString where
 --------------------------------------------------------------------------------
 
 testOnly :: (Show b, Eq b) => b -> (a -> b) -> String -> a -> TestBench
-testOnly = mkTestBench (\_ _ -> Nothing) . (Just .: (@=?))
+testOnly = mkTestBench (\_ _ -> Nothing) (\_ _ -> Nothing) . (Just .: (@=?))
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (f .: g) x y = f (g x y)
