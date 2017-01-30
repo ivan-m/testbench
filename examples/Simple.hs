@@ -42,7 +42,7 @@ main = testBench $ do
   compareFuncConstraint (Proxy :: Proxy Sequential)
                         "Length of different linear types"
                         len
-                        (baseline "Lists" sampleList <> benchNormalForm)
+                        [baseline "Lists" sampleList, benchNormalForm]
                         $ do comp "sequence" (Seq.fromList sampleList)
                              comp "strict bytestring" (SB.pack sampleList)
                              comp "lazy bytestring" (LB.pack sampleList)

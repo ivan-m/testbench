@@ -1,5 +1,6 @@
-{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, RankNTypes,
-             ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances,
+             FunctionalDependencies, GeneralizedNewtypeDeriving,
+             MultiParamTypeClasses, RankNTypes, ScopedTypeVariables #-}
 
 {- |
    Module      : TestBench
@@ -21,7 +22,7 @@ For example:
 >   -- Compare how long it takes to make a list of the specified length.
 >   compareFunc "List length"
 >               (\n -> length (replicate n ()) == n)
->               (testWith (@? "Not as long as specified") `mappend` benchNormalForm)
+>               [testWith (@? "Not as long as specified"), benchNormalForm]
 >               (mapM_ (\n -> comp ("len == " ++ show n) n) [1..5])
 >
 >   -- Polymorphic comparisons.
@@ -32,7 +33,7 @@ For example:
 >   compareFuncConstraint (Proxy :: Proxy (CUnion Eq Num))
 >                         "Number type equality"
 >                         (join (==) . (0`asTypeOf`))
->                         (baseline "Integer" (undefined :: Integer) `mappend` benchNormalForm)
+>                         [baseline "Integer" (undefined :: Integer), benchNormalForm]
 >                         $ do comp "Int"     (undefined :: Int)
 >                              comp "Double"  (undefined :: Double)
 
@@ -247,14 +248,16 @@ mkTestBench toB w checkRes fn nm arg = singleTree
 --
 --   * No tests are performed by default; use either 'baseline' or
 --     'testWith' to specify one.
-compareFunc :: forall a b. String -> (a -> b) -> CompParams (SameAs a) b
+compareFunc :: forall params a b. (ProvideParams params (SameAs a) b)
+               => String -> (a -> b) -> params
                -> Comparison (SameAs a) b -> TestBench
 compareFunc = compareFuncConstraint (Proxy :: Proxy (SameAs a))
 
 -- | As with 'compareFunc' but allow for polymorphic inputs by
 --   specifying the constraint to be used.
-compareFuncConstraint :: forall ca b. Proxy ca -> String -> (forall a. (ca a) => a -> b)
-                         -> CompParams ca b -> Comparison ca b -> TestBench
+compareFuncConstraint :: forall params ca b. (ProvideParams params ca b)
+                         => Proxy ca -> String -> (forall a. (ca a) => a -> b)
+                         -> params -> Comparison ca b -> TestBench
 compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
                                                let opTr = map Leaf (withOps' ops)
                                                singleTree (Branch lbl opTr)
@@ -266,9 +269,11 @@ compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci c
              , toTest  = const Nothing
              }
 
-    ci = appEndo (mkOps params) ci0
+    params' = toParams params
 
-    withOps' = appEndo (withOps params ci)
+    ci = appEndo (mkOps params') ci0
+
+    withOps' = appEndo (withOps params' ci)
 
 -- TODO: work out how to fix it if multiple test setting functions are called; might need a Last in here.
 -- | Monoidally build up the parameters used to control a 'Comparison'
@@ -290,6 +295,26 @@ instance Monoid (CompParams ca b) where
                        }
     where
       mappendBy f = mappend (f cp1) (f cp2)
+
+-- | A convenience class to make it easier to provide 'CompParams'
+--   values.
+--
+--   You can either:
+--
+--   * Provide no parameters with @mempty@
+--
+--   * Provide values chained together using @'mappend'@ or @<>@
+--
+--   * Use the list instance and provide a list of 'CompParams'
+--     values.
+class ProvideParams cp ca b | cp -> ca b where
+  toParams :: cp -> CompParams ca b
+
+instance ProvideParams (CompParams ca b) ca b where
+  toParams = id
+
+instance ProvideParams [CompParams ca b] ca b where
+  toParams = mconcat
 
 mkOpsFrom :: (CompInfo ca b -> CompInfo ca b) -> CompParams ca b
 mkOpsFrom f = mempty { mkOps = Endo f }
