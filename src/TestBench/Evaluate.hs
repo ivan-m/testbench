@@ -213,7 +213,7 @@ printRow ep r = do printf "%-*s" (nameWidth ep) label
                    putStr "\n"
   where
     label :: String
-    label = printf "%*s" (rowDepth r) (rowLabel r)
+    label = printf "%s%s" (replicate (rowDepth r) ' ') (rowLabel r)
 
 indentPerLevel :: Int
 indentPerLevel = 2
