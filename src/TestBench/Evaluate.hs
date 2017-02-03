@@ -40,14 +40,12 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
-import Control.Applicative    (liftA2)
-import Control.DeepSeq        (NFData)
-import Control.Monad          (when)
-import Data.Int               (Int64)
-import Data.List              (transpose)
-import Data.Maybe             (isJust, mapMaybe)
-import Text.PrettyPrint.Boxes
-import Text.Printf            (printf)
+import Control.Applicative (liftA2)
+import Control.DeepSeq     (NFData)
+import Control.Monad       (when, zipWithM_)
+import Data.Int            (Int64)
+import Data.Maybe          (isJust, mapMaybe)
+import Text.Printf         (printf)
 
 --------------------------------------------------------------------------------
 
@@ -58,6 +56,7 @@ type EvalTree = LabelTree Eval
 type EvalForest = [EvalTree]
 
 data Eval = Eval { eName  :: !String
+                 , eDepth :: !Int
                  , eBench :: !(Maybe Benchmarkable)
                  , eWeigh :: !(Maybe GetWeight)
                  }
@@ -98,22 +97,25 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
                        let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
                            ec = EC cfg ep'
                        rs <- toRows ec ef
-                       printBox (rowsToBox ep' rs)
+                       printRows ep' rs
   where
     ep = checkForest ef
 
-data EvalParams = EP { hasBench :: !Bool
-                     , hasWeigh :: !Bool
+data EvalParams = EP { hasBench  :: !Bool
+                     , hasWeigh  :: !Bool
+                     , nameWidth :: !Int
                      }
                 deriving (Eq, Ord, Show, Read)
 
 instance Monoid EvalParams where
-  mempty = EP { hasBench = False
-              , hasWeigh = False
+  mempty = EP { hasBench  = False
+              , hasWeigh  = False
+              , nameWidth = 0
               }
 
-  mappend ec1 ec2 = EP { hasBench = mappendBy hasBench
-                       , hasWeigh = mappendBy hasWeigh
+  mappend ec1 ec2 = EP { hasBench  = mappendBy hasBench
+                       , hasWeigh  = mappendBy hasWeigh
+                       , nameWidth = nameWidth ec1 `max` nameWidth ec2
                        }
     where
       mappendBy f = f ec1 || f ec2
@@ -121,8 +123,10 @@ instance Monoid EvalParams where
 checkForest :: EvalForest -> EvalParams
 checkForest = mconcat . map (foldLTree (const mconcat) . fmap calcConfig)
   where
-    calcConfig e = EP { hasBench = isJust (eBench e)
-                      , hasWeigh = isJust (eWeigh e)
+    calcConfig e = EP { hasBench  = isJust (eBench e)
+                      , hasWeigh  = isJust (eWeigh e)
+                      , nameWidth = length (eName e)
+                                    + indentPerLevel * eDepth e
                       }
 
 data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
@@ -190,19 +194,26 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
 
 --------------------------------------------------------------------------------
 
-rowsToBox :: EvalParams -> [Row] -> Box
-rowsToBox ep = hsep columnGap center1
-               . withHead (vcat left) (vcat right)
-               . transpose
-               . ((empty11:resHeaders ep):) -- Add header row
-               . map (rowToBoxes ep)
+printRows :: EvalParams -> [Row] -> IO ()
+printRows ep rs = do printHeaders ep
+                     mapM_ (printRow ep) rs
 
-rowToBoxes :: EvalParams -> Row -> [Box]
-rowToBoxes ep r = moveRight (indentPerLevel * rowDepth r) (text (rowLabel r))
-                  : resToBoxes ep r
+printHeaders :: EvalParams -> IO ()
+printHeaders ep = do putStrLn (replicate (nameWidth ep) ' ')
+                     when (hasBench ep) (mapM_ toPrintf benchHeaders)
+                     when (hasWeigh ep) (mapM_ toPrintf weighHeaders)
+                     putStr "\n"
+  where
+    toPrintf (w,hdr) = printf "%s%*s" columnSpace w hdr
 
-empty11 :: Box
-empty11 = emptyBox 1 1 -- Can't use nullBox, as /some/ size is needed.
+printRow :: EvalParams -> Row -> IO ()
+printRow ep r = do printf "%-*s" (nameWidth ep) label
+                   when (hasBench ep) (printBench (rowResult r))
+                   when (hasWeigh ep) (printWeigh (rowWeight r))
+                   putStr "\n"
+  where
+    label :: String
+    label = printf "%*s" (rowDepth r) (rowLabel r)
 
 indentPerLevel :: Int
 indentPerLevel = 2
@@ -210,46 +221,51 @@ indentPerLevel = 2
 columnGap :: Int
 columnGap = 2
 
-resHeaders :: EvalParams -> [Box]
-resHeaders ep = mHdrs hasBench benchHeaders
-                . mHdrs hasWeigh weighHeaders
-                $ []
+columnSpace :: String
+columnSpace = replicate columnGap ' '
+
+benchHeaders :: [(Int, String)]
+benchHeaders = map addWidth
+                   ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
+
+weighHeaders :: [(Int, String)]
+weighHeaders = map addWidth ["AllocBytes", "NumGC"]
+
+-- Maximum width a numeric field can take.  Might as well make them
+-- all the same width.  All other formatters have been manually
+-- adjusted to produce nothing longer than this.
+secsWidth :: Int
+secsWidth = length (secs ((-pi) / 000))
+
+addWidth :: String -> (Int, String)
+addWidth nm = (max (length nm) secsWidth, nm)
+
+printBench :: Maybe BenchResults -> IO ()
+printBench mr = zipWithM_ (printf "%*s") wdths cols
   where
-    mHdrs p hdrs = if p ep
-                      then (hdrs++)
-                      else id
+    cols = maybe (repeat "")
+                 (\r -> timed (resMean r) ++ timed (resStdDev r) ++ [ov r])
+                 mr
 
-benchHeaders :: [Box]
-benchHeaders = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
-
-weighHeaders :: [Box]
-weighHeaders = ["AllocBytes", "NumGC"]
-
-resToBoxes :: EvalParams -> Row -> [Box]
-resToBoxes ep r = mRes hasBench benchHeaders benchToBoxes rowResult
-                  . mRes hasWeigh weighHeaders weightToBoxes rowWeight
-                  $ []
-  where
-    blankHeaders = map (const empty11)
-
-    mRes :: (EvalParams -> Bool) -> [Box] -> (a -> [Box]) -> (Row -> Maybe a) -> [Box] -> [Box]
-    mRes p hdrs f v = if p ep
-                         then (maybe (blankHeaders hdrs) f (v r) ++)
-                         else id
-
-benchToBoxes :: BenchResults -> [Box]
-benchToBoxes r = e2b (resMean r) (e2b (resStdDev r) [ov])
-  where
-    e2b e bs = toB estPoint : toB estLowerBound : toB estUpperBound : bs
+    timed bs = [secIt estPoint, secIt estLowerBound, secIt estUpperBound]
       where
-        toB f = text (secs (f e))
+        secIt f = secs (f bs)
 
-    ov = text (show (round (ovFraction (resOutVar r) * 100) :: Int)) <> "%"
+    ov r = percent (ovFraction (resOutVar r))
 
-weightToBoxes :: Weight -> [Box]
-weightToBoxes r = [ text (bytes (bytesAlloc r))
-                  , text (show (numGC r))
-                  ]
+    wdths = map fst benchHeaders
+
+printWeigh :: Maybe Weight -> IO ()
+printWeigh mr = zipWithM_ (printf "%*s") wdths cols
+  where
+    cols = maybe (repeat "")
+                 (\r -> [bytes (bytesAlloc r), count (numGC r)])
+                 mr
+
+    wdths = map fst weighHeaders
+
+percent :: Double -> String
+percent p = printf "%.3f%%" (p * 100)
 
 -- | Human-readable description of the number of bytes used.  Assumed
 --   non-negative.
@@ -266,8 +282,5 @@ bytes b  = printf "%.3f %sB" val p
 
     p = prefixes !! mult
 
---------------------------------------------------------------------------------
-
-withHead :: (a -> b) -> (a -> b) -> [a] -> [b]
-withHead _  _  []    = []
-withHead fh fr (h:r) = fh h : map fr r
+count :: Int64 -> String
+count = printf "%.3e" . (`asTypeOf` (0::Double)) . fromIntegral
