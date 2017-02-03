@@ -78,7 +78,7 @@ getWeight = GetWeight
 
 flattenBenchTree :: EvalTree -> Maybe Benchmark
 flattenBenchTree = fmap (foldLTree bgroup)
-                   . mapMaybeTree (liftA2 fmap (bench . eName) eBench)
+                   . mapMaybeTree (const $ liftA2 fmap (bench . eName) eBench)
 
 -- | Remove the explicit tree-like structure into the implicit one
 --   used by Criterion.

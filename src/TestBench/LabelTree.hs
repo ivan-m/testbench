@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE BangPatterns, DeriveFunctor #-}
+
 {- |
    Module      : TestBench.LabelTree
    Description : Labelled rose-tree structure
@@ -27,14 +28,14 @@ foldLTree br = go
               Leaf a         -> a
               Branch str trs -> br str (map go trs)
 
-mapMaybeTree :: (a -> Maybe b) -> LabelTree a -> Maybe (LabelTree b)
-mapMaybeTree f = go
+mapMaybeTree :: (Int -> a -> Maybe b) -> LabelTree a -> Maybe (LabelTree b)
+mapMaybeTree f = go 0
   where
-    go tr = case tr of
-              Leaf a       -> Leaf <$> f a
-              Branch l trs -> case mapMaybe go trs of
-                                []   -> Nothing
-                                trs' -> Just (Branch l trs')
+    go !d tr = case tr of
+                 Leaf a       -> Leaf <$> f d a
+                 Branch l trs -> case mapMaybe (go (d+1)) trs of
+                                   []   -> Nothing
+                                   trs' -> Just (Branch l trs')
 
-mapMaybeForest :: (a -> Maybe b) -> (String -> [b] -> b) -> [LabelTree a] -> [b]
+mapMaybeForest :: (Int -> a -> Maybe b) -> (String -> [b] -> b) -> [LabelTree a] -> [b]
 mapMaybeForest f br = mapMaybe (fmap (foldLTree br) . mapMaybeTree f)
