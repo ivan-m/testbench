@@ -145,17 +145,17 @@ data Operation = Op { opName  :: !String
 type OpTree = LabelTree Operation
 
 toBenchmarks :: [OpTree] -> EvalForest
-toBenchmarks = mapMaybe (mapMaybeTree (withName (uncurry . Eval) toEval))
+toBenchmarks = mapMaybe (mapMaybeTree (withName ((uncurry .) . flip Eval) toEval))
   where
     toEval op = case (opBench op, opWeigh op) of
                   (Nothing, Nothing) -> Nothing
                   ops                -> Just ops
 
 toTests :: [OpTree] -> Test
-toTests = TestList . mapMaybeForest (withName (~:) opTest) (~:)
+toTests = TestList . mapMaybeForest (withName (const (~:)) opTest) (~:)
 
-withName :: (String -> a -> b) -> (Operation -> Maybe a) -> Operation -> Maybe b
-withName jn mf op = jn (opName op) <$> mf op
+withName :: (Int -> String -> a -> b) -> (Operation -> Maybe a) -> Int -> Operation -> Maybe b
+withName jn mf d op = jn d (opName op) <$> mf op
 
 -- -----------------------------------------------------------------------------
 
