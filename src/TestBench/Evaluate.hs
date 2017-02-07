@@ -95,8 +95,8 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
                        hasStats <- getGCStatsEnabled
                        let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
                            ec = EC cfg ep'
-                       rs <- toRows ec ef
-                       printRows ep' rs
+                       printHeaders ep'
+                       toRows ec ef
   where
     ep = checkForest ef
 
@@ -146,17 +146,19 @@ data Row = Row { rowLabel  :: !String
                }
   deriving (Eq, Show, Read)
 
-toRows :: EvalConfig -> EvalForest -> IO [Row]
+toRows :: EvalConfig -> EvalForest -> IO ()
 toRows cfg = f2r
   where
-    f2r :: EvalForest -> IO [Row]
-    f2r = fmap concat . mapM t2r
+    f2r :: EvalForest -> IO ()
+    f2r = mapM_ t2r
 
-    t2r :: EvalTree -> IO [Row]
+    t2r :: EvalTree -> IO ()
     t2r bt = case bt of
-               Leaf   d e      -> (:[]) <$> makeRow cfg d e
-               Branch d lbl ts -> (Row lbl d Nothing Nothing :)
-                                  <$> f2r ts
+               Leaf   d e      -> makeRow cfg d e >>= printRow ep
+               Branch d lbl ts -> do printRow ep (Row lbl d Nothing Nothing)
+                                     f2r ts
+
+    ep = evalParam cfg
 
 makeRow :: EvalConfig -> Int -> Eval -> IO Row
 makeRow cfg d e = Row lbl d
@@ -196,10 +198,6 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
           -- just set it.
 
 --------------------------------------------------------------------------------
-
-printRows :: EvalParams -> [Row] -> IO ()
-printRows ep rs = do printHeaders ep
-                     mapM_ (printRow ep) rs
 
 printHeaders :: EvalParams -> IO ()
 printHeaders ep = do putStrLn (replicate (nameWidth ep) ' ')
