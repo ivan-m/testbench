@@ -45,7 +45,6 @@ library
                      , TestBench.Evaluate
                      , TestBench.LabelTree
   build-depends:       base >=4.7 && <4.11
-                     , boxes == 0.1.*
                      , criterion == 1.1.*
                      , deepseq
                      , HUnit
