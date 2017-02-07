@@ -200,7 +200,7 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
 --------------------------------------------------------------------------------
 
 printHeaders :: EvalParams -> IO ()
-printHeaders ep = do putStrLn (replicate (nameWidth ep) ' ')
+printHeaders ep = do putStr (replicate (nameWidth ep) ' ')
                      when (hasBench ep) (mapM_ toPrintf benchHeaders)
                      when (hasWeigh ep) (mapM_ toPrintf weighHeaders)
                      putStr "\n"
