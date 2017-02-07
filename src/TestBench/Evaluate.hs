@@ -214,7 +214,7 @@ printRow ep r = do printf "%-*s" (nameWidth ep) label
                    putStr "\n"
   where
     label :: String
-    label = printf "%s%s" (replicate (rowDepth r) ' ') (rowLabel r)
+    label = printf "%s%s" (replicate (rowDepth r * indentPerLevel) ' ') (rowLabel r)
 
 indentPerLevel :: Int
 indentPerLevel = 2
@@ -242,7 +242,7 @@ addWidth :: String -> (Int, String)
 addWidth nm = (max (length nm) secsWidth, nm)
 
 printBench :: Maybe BenchResults -> IO ()
-printBench mr = zipWithM_ (printf "%*s") wdths cols
+printBench mr = zipWithM_ (printf "%s%*s" columnSpace) wdths cols
   where
     cols = maybe (repeat "")
                  (\r -> timed (resMean r) ++ timed (resStdDev r) ++ [ov r])
@@ -257,7 +257,7 @@ printBench mr = zipWithM_ (printf "%*s") wdths cols
     wdths = map fst benchHeaders
 
 printWeigh :: Maybe Weight -> IO ()
-printWeigh mr = zipWithM_ (printf "%*s") wdths cols
+printWeigh mr = zipWithM_ (printf "%s%*s" columnSpace) wdths cols
   where
     cols = maybe (repeat "")
                  (\r -> [bytes (bytesAlloc r), count (numGC r)])
