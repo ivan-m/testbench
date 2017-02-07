@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE GADTs, RankNTypes #-}
 
 {- |
    Module      : TestBench.Evaluate
