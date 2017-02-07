@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, GADTs, OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE GADTs, OverloadedStrings, RankNTypes #-}
 
 {- |
    Module      : TestBench.Evaluate
@@ -56,7 +56,6 @@ type EvalTree = LabelTree Eval
 type EvalForest = [EvalTree]
 
 data Eval = Eval { eName  :: !String
-                 , eDepth :: !Int
                  , eBench :: !(Maybe Benchmarkable)
                  , eWeigh :: !(Maybe GetWeight)
                  }
@@ -77,8 +76,8 @@ getWeight :: (NFData b) => (a -> b) -> a -> GetWeight
 getWeight = GetWeight
 
 flattenBenchTree :: EvalTree -> Maybe Benchmark
-flattenBenchTree = fmap (foldLTree bgroup)
-                   . mapMaybeTree (const $ liftA2 fmap (bench . eName) eBench)
+flattenBenchTree = fmap (foldLTree (const bgroup) (flip const))
+                   . mapMaybeTree (liftA2 fmap (bench . eName) eBench)
 
 -- | Remove the explicit tree-like structure into the implicit one
 --   used by Criterion.
@@ -121,13 +120,17 @@ instance Monoid EvalParams where
       mappendBy f = f ec1 || f ec2
 
 checkForest :: EvalForest -> EvalParams
-checkForest = mconcat . map (foldLTree (const mconcat) . fmap calcConfig)
+checkForest = mconcat . map (foldLTree mergeNode calcConfig)
   where
-    calcConfig e = EP { hasBench  = isJust (eBench e)
-                      , hasWeigh  = isJust (eWeigh e)
-                      , nameWidth = length (eName e)
-                                    + indentPerLevel * eDepth e
-                      }
+    mergeNode d lbl ls = mempty { nameWidth = width d lbl }
+                         `mappend` mconcat ls
+
+    calcConfig d e = EP { hasBench  = isJust (eBench e)
+                        , hasWeigh  = isJust (eWeigh e)
+                        , nameWidth = width d (eName e)
+                        }
+
+    width d nm = indentPerLevel * d + length nm
 
 data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
                      , evalParam   :: {-# UNPACK #-}!EvalParams
@@ -144,16 +147,16 @@ data Row = Row { rowLabel  :: !String
   deriving (Eq, Show, Read)
 
 toRows :: EvalConfig -> EvalForest -> IO [Row]
-toRows cfg = f2r 0
+toRows cfg = f2r
   where
-    f2r :: Int -> EvalForest -> IO [Row]
-    f2r !d = fmap concat . mapM (t2r d)
+    f2r :: EvalForest -> IO [Row]
+    f2r = fmap concat . mapM t2r
 
-    t2r :: Int -> EvalTree -> IO [Row]
-    t2r !d bt = case bt of
-                  Leaf   e      -> (:[]) <$> makeRow cfg d e
-                  Branch lbl ts -> (Row lbl d Nothing Nothing :)
-                                   <$> f2r (d+1) ts
+    t2r :: EvalTree -> IO [Row]
+    t2r bt = case bt of
+               Leaf   d e      -> (:[]) <$> makeRow cfg d e
+               Branch d lbl ts -> (Row lbl d Nothing Nothing :)
+                                  <$> f2r ts
 
 makeRow :: EvalConfig -> Int -> Eval -> IO Row
 makeRow cfg d e = Row lbl d

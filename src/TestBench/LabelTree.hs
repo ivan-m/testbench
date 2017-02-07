@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 {- |
    Module      : TestBench.LabelTree
@@ -16,26 +16,26 @@ import Data.Maybe (mapMaybe)
 
 --------------------------------------------------------------------------------
 
--- | A simple labelled rose-tree data structure.
-data LabelTree a = Leaf a
-                 | Branch String [LabelTree a]
+-- | A simple labelled rose-tree data structure also containing the depth.
+data LabelTree a = Leaf !Int a
+                 | Branch !Int String [LabelTree a]
   deriving (Eq, Ord, Show, Read, Functor)
 
-foldLTree :: (String -> [a] -> a) -> LabelTree a -> a
-foldLTree br = go
+foldLTree :: (Int -> String -> [a] -> a) -> (Int -> b -> a) -> LabelTree b -> a
+foldLTree br lf = go
   where
     go tr = case tr of
-              Leaf a         -> a
-              Branch str trs -> br str (map go trs)
+              Leaf d b         -> lf d b
+              Branch d str trs -> br d str (map go trs)
 
-mapMaybeTree :: (Int -> a -> Maybe b) -> LabelTree a -> Maybe (LabelTree b)
-mapMaybeTree f = go 0
+mapMaybeTree :: (a -> Maybe b) -> LabelTree a -> Maybe (LabelTree b)
+mapMaybeTree f = go
   where
-    go !d tr = case tr of
-                 Leaf a       -> Leaf <$> f d a
-                 Branch l trs -> case mapMaybe (go (d+1)) trs of
-                                   []   -> Nothing
-                                   trs' -> Just (Branch l trs')
+    go tr = case tr of
+              Leaf d a       -> Leaf d <$> f a
+              Branch d l trs -> case mapMaybe go trs of
+                                  []   -> Nothing
+                                  trs' -> Just (Branch d l trs')
 
-mapMaybeForest :: (Int -> a -> Maybe b) -> (String -> [b] -> b) -> [LabelTree a] -> [b]
-mapMaybeForest f br = mapMaybe (fmap (foldLTree br) . mapMaybeTree f)
+mapMaybeForest :: (a -> Maybe b) -> (Int -> String -> [b] -> b) -> [LabelTree a] -> [b]
+mapMaybeForest f br = mapMaybe (fmap (foldLTree br (flip const)) . mapMaybeTree f)

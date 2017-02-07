@@ -145,42 +145,48 @@ data Operation = Op { opName  :: !String
 type OpTree = LabelTree Operation
 
 toBenchmarks :: [OpTree] -> EvalForest
-toBenchmarks = mapMaybe (mapMaybeTree (withName ((uncurry .) . flip Eval) toEval))
+toBenchmarks = mapMaybe (mapMaybeTree (withName (uncurry . Eval) toEval))
   where
     toEval op = case (opBench op, opWeigh op) of
                   (Nothing, Nothing) -> Nothing
                   ops                -> Just ops
 
 toTests :: [OpTree] -> Test
-toTests = TestList . mapMaybeForest (withName (const (~:)) opTest) (~:)
+toTests = TestList . mapMaybeForest (withName (~:) opTest) (const (~:))
 
-withName :: (Int -> String -> a -> b) -> (Operation -> Maybe a) -> Int -> Operation -> Maybe b
-withName jn mf d op = jn d (opName op) <$> mf op
+withName :: (String -> a -> b) -> (Operation -> Maybe a) -> Operation -> Maybe b
+withName jn mf op = jn (opName op) <$> mf op
 
 -- -----------------------------------------------------------------------------
 
 -- TODO: does this /really/ need to be in IO?
-newtype TestBenchM r = TestBenchM { getOpTrees :: WriterT [OpTree] IO r}
-                     deriving (Functor, Applicative, Monad, MonadIO)
+newtype TestBenchM r
+  = TestBenchM { getOpTrees :: ReaderT Int (WriterT [OpTree] IO) r }
+  deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | An environment for combining testing and benchmarking.
 type TestBench = TestBenchM ()
 
-makeOpTree :: String -> TestBench -> IO OpTree
-makeOpTree nm = fmap (Branch nm) . execWriterT . getOpTrees
+runTestBenchDepth :: Int -> TestBench -> IO [OpTree]
+runTestBenchDepth d = execWriterT . (`runReaderT` d) . getOpTrees
 
 -- | Label a sub-part of a @TestBench@.
 collection :: String -> TestBench -> TestBench
-collection nm ops = liftIO (makeOpTree nm ops) >>= singleTree
+collection nm ops = do d   <- getDepth
+                       sub <- liftIO (runTestBenchDepth (d+1) ops)
+                       singleTree (Branch d nm sub)
 
 treeList :: [OpTree] -> TestBench
-treeList = TestBenchM . tell
+treeList = TestBenchM . lift . tell
 
 singleTree :: OpTree -> TestBench
 singleTree = treeList . (:[])
 
+getDepth :: TestBenchM Int
+getDepth = TestBenchM ask
+
 runTestBench :: TestBench -> IO [OpTree]
-runTestBench = execWriterT . getOpTrees
+runTestBench = runTestBenchDepth 0
 
 -- | Obtain the resulting tests and benchmarks from the specified
 --   @TestBench@.
@@ -228,13 +234,14 @@ mkTestBench :: ((a -> b) -> a -> Maybe Benchmarkable)
                -> (b -> Maybe Assertion)
                   -- ^ Should the result be checked?
                -> (a -> b) -> String -> a -> TestBench
-mkTestBench toB w checkRes fn nm arg = singleTree
-                                       . Leaf
-                                       $ Op { opName  = nm
-                                            , opBench = toB fn arg
-                                            , opWeigh = w fn arg
-                                            , opTest  = checkRes (fn arg)
-                                            }
+mkTestBench toB w checkRes fn nm arg = do d <- getDepth
+                                          singleTree
+                                            . Leaf d
+                                            $ Op { opName  = nm
+                                                 , opBench = toB fn arg
+                                                 , opWeigh = w fn arg
+                                                 , opTest  = checkRes (fn arg)
+                                                 }
 
 --------------------------------------------------------------------------------
 
@@ -259,8 +266,9 @@ compareFuncConstraint :: forall params ca b. (ProvideParams params ca b)
                          => Proxy ca -> String -> (forall a. (ca a) => a -> b)
                          -> params -> Comparison ca b -> TestBench
 compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
-                                               let opTr = map Leaf (withOps' ops)
-                                               singleTree (Branch lbl opTr)
+                                               d   <- getDepth
+                                               let opTr = map (Leaf (d+1)) (withOps' ops)
+                                               singleTree (Branch d lbl opTr)
   where
     ci0 :: CompInfo ca b
     ci0 = CI { func    = f
