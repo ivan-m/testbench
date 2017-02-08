@@ -141,7 +141,7 @@ data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
 
 data Row = Row { rowLabel  :: !String
                , rowDepth  :: {-# UNPACK #-} !Int
-               , rowResult :: !(Maybe BenchResults)
+               , rowBench  :: !(Maybe BenchResults)
                , rowWeight :: !(Maybe Weight)
                }
   deriving (Eq, Show, Read)
@@ -192,6 +192,8 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
                                                             }
 
   where
+    -- Set this here just in case someone didn't use the top-level
+    -- 'testBench' function.
     cfg' = cfg { verbosity = Quiet }
 
     i = 0 -- We're ignoring this value anyway, so it should be OK to
@@ -209,7 +211,7 @@ printHeaders ep = do putStr (replicate (nameWidth ep) ' ')
 
 printRow :: EvalParams -> Row -> IO ()
 printRow ep r = do printf "%-*s" (nameWidth ep) label
-                   when (hasBench ep) (printBench (rowResult r))
+                   when (hasBench ep) (printBench (rowBench r))
                    when (hasWeigh ep) (printWeigh (rowWeight r))
                    putStr "\n"
   where

@@ -42,13 +42,16 @@ flag examples
 
 library
   exposed-modules:     TestBench
+                     , TestBench.Commands
   other-modules:       TestBench.Constraints
                      , TestBench.Evaluate
                      , TestBench.LabelTree
+                     , Paths_testbench
   build-depends:       base >=4.7 && <4.11
-                     , criterion == 1.1.*
+                     , criterion >= 1.1.4.0 && < 1.2
                      , deepseq
                      , HUnit
+                     , optparse-applicative
                      , statistics
                      , transformers
                      , weigh == 0.0.*

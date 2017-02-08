@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances,
              FunctionalDependencies, GeneralizedNewtypeDeriving,
-             MultiParamTypeClasses, RankNTypes, ScopedTypeVariables #-}
+             MultiParamTypeClasses, RankNTypes, RecordWildCards,
+             ScopedTypeVariables #-}
 
 {- |
    Module      : TestBench
@@ -57,6 +58,7 @@ module TestBench
   ( -- * Specification and running
     TestBench
   , testBench
+  , testBenchWith
     -- ** Running manually
   , getTestBenches
   , EvalTree
@@ -111,14 +113,15 @@ module TestBench
   , SameAs
   ) where
 
+import TestBench.Commands
 import TestBench.Constraints
 import TestBench.Evaluate
 import TestBench.LabelTree
 
-import Criterion              (Benchmarkable, nf, whnf)
-import Criterion.Main.Options (defaultConfig)
-import Test.HUnit.Base        (Assertion, Counts(..), Test(..), (@=?), (~:))
-import Test.HUnit.Text        (runTestTT)
+import Criterion       (Benchmarkable, nf, whnf)
+import Criterion.Types (Config)
+import Test.HUnit.Base (Assertion, Counts(..), Test(..), (@=?), (~:))
+import Test.HUnit.Text (runTestTT)
 
 import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData(..))
@@ -130,6 +133,8 @@ import Control.Monad.Trans.Writer.Lazy (WriterT, execWriterT, tell)
 import Data.Maybe                      (mapMaybe)
 import Data.Monoid                     (Endo(..))
 import Data.Proxy                      (Proxy(..))
+import Options.Applicative             (execParser)
+import System.Exit                     (exitSuccess)
 
 -- -----------------------------------------------------------------------------
 
@@ -196,16 +201,36 @@ getTestBenches = fmap (toTests &&& toBenchmarks) . runTestBench
 -- | Run the specified benchmarks if and only if all tests pass, using
 --   a comparison-based format for benchmarking output.
 --
---   Please note that this is currently very simplistic: no
---   parameters, configuration, etc.  Also, benchmark results will not
---   be shown until all benchmarks are complete.
---
 --   For more control, use 'getTestBenches'.
 testBench :: TestBench -> IO ()
-testBench tb = do (tst,bf) <- getTestBenches tb
-                  tcnts <- runTestTT tst
-                  when (errors tcnts == 0 && failures tcnts == 0)
-                       (evalForest defaultConfig bf) -- TODO: make this configurable
+testBench = testBenchWith testBenchConfig
+
+-- | As with 'testBench' but allow specifying a custom default
+--   'Config' parameter rather than 'testBenchConfig'.
+testBenchWith :: Config -> TestBench -> IO ()
+testBenchWith cfg tb = execParser (optionParser cfg) >>= go
+  where
+    go Version = putStrLn versionInfo >> exitSuccess
+    go List    = do
+      (_, bf) <- getTestBenches tb
+      -- The Config value won't get used, so it's OK just to use the default here.
+      evalForest cfg (stripEval bf)
+      exitSuccess
+    go Run{..} = do
+      (tst, bf) <- getTestBenches tb
+      testSucc <- if runTests
+                     then do tcnts <- runTestTT tst
+                             return (errors tcnts == 0 && failures tcnts == 0)
+                     else return True
+      when (runBench && testSucc) (evalForest benchCfg bf)
+
+    -- To print out the list of benchmarks, we abuse the current
+    -- tabular setup for printing results by just disabling all
+    -- benchmarks, etc.
+    stripEval :: EvalForest -> EvalForest
+    stripEval = map (fmap (\e -> Eval (eName e) Nothing Nothing))
+    -- Create a new value so that if Eval is expanded we don't
+    -- accidentally run something.
 
 -- -----------------------------------------------------------------------------
 

@@ -55,12 +55,6 @@ Limitations
     - No CSV output for saving results.  This should be easier to add
       in if required but currently isn't available.
 
-* The `testBench` function for running the tests and benchmarks is
-  currently very stupid.  For example, there is no way to specify that
-  you do not wish to run the tests from the command-line, and there is
-  no option of only running selected benchmarks, how many times each
-  should be run, etc.
-
 Fortuitously Anticipated Queries
 --------------------------------
 
