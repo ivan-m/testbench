@@ -55,10 +55,6 @@ Limitations
     - No CSV output for saving results.  This should be easier to add
       in if required but currently isn't available.
 
-    - To be able to display the tabular results, it isn't possible to
-      get any benchmarking results until the _all_ of the benchmarks
-      have been run.
-
 * The `testBench` function for running the tests and benchmarks is
   currently very stupid.  For example, there is no way to specify that
   you do not wish to run the tests from the command-line, and there is
