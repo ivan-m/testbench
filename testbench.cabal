@@ -1,5 +1,5 @@
 name:                testbench
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Create tests and benchmarks together
 description: {
 Test your benchmarks!  Benchmark your tests!
@@ -27,6 +27,7 @@ maintainer:          Ivan.Miljenovic@gmail.com
 category:            Testing
 build-type:          Simple
 extra-source-files:  README.md
+                   , Changelog.md
 cabal-version:       >=1.10
 
 tested-with:   GHC == 7.10.2, GHC == 8.0.1, GHC == 8.1.*
