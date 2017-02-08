@@ -26,7 +26,7 @@ maintainer:          Ivan.Miljenovic@gmail.com
 -- copyright:
 category:            Testing
 build-type:          Simple
--- extra-source-files:
+extra-source-files:  README.md
 cabal-version:       >=1.10
 
 tested-with:   GHC == 7.10.2, GHC == 8.0.1, GHC == 8.1.*
