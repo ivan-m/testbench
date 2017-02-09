@@ -81,6 +81,7 @@ module TestBench
 
     -- * Comparisons
   , compareFunc
+  , compareFuncList
   , compareFuncConstraint
 
     -- ** Specifying constraints
@@ -286,6 +287,25 @@ compareFunc :: forall params a b. (ProvideParams params (SameAs a) b)
                => String -> (a -> b) -> params
                -> Comparison (SameAs a) b -> TestBench
 compareFunc = compareFuncConstraint (Proxy :: Proxy (SameAs a))
+
+-- | As with 'compareFunc' but use the provided list of values to base
+--   the benchmarking off of.
+--
+--   This is useful in situations where you create an enumeration type
+--   to describe everything you're benchmarking and a function that
+--   takes one of these values and evaluates it.
+--
+--   'baseline' is used on the first value (if non-empty); the 'Show'
+--   instance is used to provide labels.
+compareFuncList :: forall params a b.
+                   (ProvideParams params (SameAs a) b, Show a, Eq b, Show b)
+                   => String -> (a -> b) -> params
+                   -> [a] -> TestBench
+compareFuncList lbl f params lst =
+  case lst of
+    []     -> getDepth >>= \d -> singleTree (Branch d lbl [])
+    (a:as) -> compareFunc lbl f (baseline (show a) a `mappend` toParams params)
+                                (mapM_ (\v -> comp (show v) v) as)
 
 -- | As with 'compareFunc' but allow for polymorphic inputs by
 --   specifying the constraint to be used.

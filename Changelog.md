@@ -17,6 +17,8 @@
 
 * Can now evaluate `IO`-based benchmarks.
 
+* Add `compareFuncList`.
+
 0.1.0.0 (22 May, 2016)
 ======================
 
