@@ -104,6 +104,7 @@ module TestBench
 
     -- *** Control function weighing
   , GetWeight
+  , getWeight
   , weigh
 
     -- ** Specify comparisons
