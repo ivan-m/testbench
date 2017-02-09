@@ -89,6 +89,7 @@ module TestBench
 
     -- ** Comparison parameters
   , CompParams
+  , normalForm
     -- *** Control benchmarking
   , benchNormalForm
   , benchIO
@@ -377,6 +378,12 @@ mkOpsFrom f = mempty { mkOps = Endo f }
 -- | Evaluate all benchmarks to normal form.
 benchNormalForm :: (NFData b) => CompParams ca b
 benchNormalForm = withBenchMode nf
+
+-- | A combination of 'benchNormalForm' and 'weigh', taking into
+--   account the common case that you want to consider a value that
+--   can -- and should -- be evaluated to normal form.
+normalForm :: (NFData b) => CompParams ca b
+normalForm = benchNormalForm `mappend` weigh
 
 -- | Evaluate all IO-based benchmarks to weak head normal form.
 benchIO :: CompParams ca (IO b)
