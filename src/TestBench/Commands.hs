@@ -93,10 +93,6 @@ configParser Config{..} = Config
   <*> pure verbosity -- Doesn't change
   <*> pure template  -- Not actually used
 
-outputOption :: Maybe String -> Mod OptionFields String -> Parser (Maybe String)
-outputOption file m =
-  optional (strOption (m <> metavar "FILE" <> maybe mempty value file))
-
 range :: (Show a, Read a, Ord a) => a -> a -> ReadM a
 range lo hi = do
   s <- readerAsk
