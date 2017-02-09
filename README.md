@@ -39,10 +39,6 @@ Please see the provided `examples/` directory.
 Limitations
 -----------
 
-* No explicit `IO` or monadic support.  It might work (and there are
-  some escape hatches for stating how to create `Benchmarkable`
-  values) but has not been tested yet.
-
 * No availability of specifying an environment to run benchmarks in.
 
 * To be able to display the tree-like structure more readily for

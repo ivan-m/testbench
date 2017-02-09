@@ -90,6 +90,8 @@ module TestBench
   , CompParams
     -- *** Control benchmarking
   , benchNormalForm
+  , benchIO
+  , benchNormalFormIO
   , withBenchMode
   , noBenchmarks
 
@@ -118,7 +120,7 @@ import TestBench.Constraints
 import TestBench.Evaluate
 import TestBench.LabelTree
 
-import Criterion       (Benchmarkable, nf, whnf)
+import Criterion       (Benchmarkable, nf, nfIO, whnf, whnfIO)
 import Criterion.Types (Config)
 import Test.HUnit.Base (Assertion, Counts(..), Test(..), (@=?), (~:))
 import Test.HUnit.Text (runTestTT)
@@ -355,6 +357,14 @@ mkOpsFrom f = mempty { mkOps = Endo f }
 -- | Evaluate all benchmarks to normal form.
 benchNormalForm :: (NFData b) => CompParams ca b
 benchNormalForm = withBenchMode nf
+
+-- | Evaluate all IO-based benchmarks to weak head normal form.
+benchIO :: CompParams ca (IO b)
+benchIO = withBenchMode (whnfIO .)
+
+-- | Evaluate all IO-based benchmarks to normal form.
+benchNormalFormIO :: (NFData b) => CompParams ca (IO b)
+benchNormalFormIO = withBenchMode (nfIO .)
 
 -- | Allow specifying how benchmarks should be evaluated.  This may
 --   allow usage of methods such as @nfIO@, but this has not been

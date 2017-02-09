@@ -15,6 +15,8 @@
 * Some of Criterion's command-line options are now available, though
   none to do with saving results to file.
 
+* Can now evaluate `IO`-based benchmarks.
+
 0.1.0.0 (22 May, 2016)
 ======================
 
