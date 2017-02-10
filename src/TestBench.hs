@@ -82,6 +82,7 @@ module TestBench
     -- * Comparisons
   , compareFunc
   , compareFuncList
+  , compareFuncAll
   , compareFuncConstraint
 
     -- ** Specifying constraints
@@ -307,7 +308,14 @@ compareFuncList lbl f params lst =
   case lst of
     []     -> getDepth >>= \d -> singleTree (Branch d lbl [])
     (a:as) -> compareFunc lbl f (baseline (show a) a `mappend` toParams params)
-                                (mapM_ (\v -> comp (show v) v) as)
+                                (mapM_ (comp =<< show) as)
+
+-- | An extension to 'compareFuncList' that uses the 'Bounded' and
+--   'Enum' instances to generate the list of all values.
+compareFuncAll :: forall params a b.
+                  (ProvideParams params (SameAs a) b, Show a, Enum a, Bounded a
+                  , Eq b, Show b) => String -> (a -> b) -> params -> TestBench
+compareFuncAll lbl f params = compareFuncList lbl f params [minBound..maxBound]
 
 -- | As with 'compareFunc' but allow for polymorphic inputs by
 --   specifying the constraint to be used.

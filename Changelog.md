@@ -17,7 +17,7 @@
 
 * Can now evaluate `IO`-based benchmarks.
 
-* Add `compareFuncList` and `normalForm`.
+* Add `compareFuncList`, `compareFuncAll` and `normalForm`.
 
 0.1.0.0 (22 May, 2016)
 ======================
