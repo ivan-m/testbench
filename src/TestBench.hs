@@ -82,7 +82,9 @@ module TestBench
     -- * Comparisons
   , compareFunc
   , compareFuncList
+  , compareFuncList'
   , compareFuncAll
+  , compareFuncAll'
   , compareFuncConstraint
 
     -- ** Specifying constraints
@@ -310,12 +312,27 @@ compareFuncList lbl f params lst =
     (a:as) -> compareFunc lbl f (baseline (show a) a `mappend` toParams params)
                                 (mapM_ (comp =<< show) as)
 
+-- | A variant of 'compareFuncList' that doesn't use 'baseline'
+--   (allowing you to specify your own test).
+compareFuncList' :: forall params a b.
+                    (ProvideParams params (SameAs a) b, Show a)
+                    => String -> (a -> b) -> params
+                    -> [a] -> TestBench
+compareFuncList' lbl f params = compareFunc lbl f params . mapM_ (comp =<< show)
+
 -- | An extension to 'compareFuncList' that uses the 'Bounded' and
 --   'Enum' instances to generate the list of all values.
 compareFuncAll :: forall params a b.
                   (ProvideParams params (SameAs a) b, Show a, Enum a, Bounded a
                   , Eq b, Show b) => String -> (a -> b) -> params -> TestBench
 compareFuncAll lbl f params = compareFuncList lbl f params [minBound..maxBound]
+
+-- | A variant of 'comapreFuncAll' that doesn't use 'baseline'
+--   (allowing you to specify your own test).
+compareFuncAll' :: forall params a b.
+                   (ProvideParams params (SameAs a) b, Show a, Enum a, Bounded a)
+                   => String -> (a -> b) -> params -> TestBench
+compareFuncAll' lbl f params = compareFuncList' lbl f params [minBound..maxBound]
 
 -- | As with 'compareFunc' but allow for polymorphic inputs by
 --   specifying the constraint to be used.
