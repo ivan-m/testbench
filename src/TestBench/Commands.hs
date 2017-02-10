@@ -51,9 +51,9 @@ optionParser cfg = info (helper <*> parseWith cfg) $
 
 parseWith :: Config -> Parser RunTestBench
 parseWith cfg =
-      Version <$ switch (long "version" <> short 'V' <> help "Show version information")
+      runParse
+  <|> Version <$ switch (long "version" <> short 'V' <> help "Show version information")
   <|> List    <$ switch (long "list" <> short 'l' <> help "List all benchmarks")
-  <|> runParse
   where
     runParse = Run <$> (not <$> switch (long "no-tests" <> help "Don't run tests"))
                    <*> (not <$> switch (long "no-bench" <> help "Don't run benchmarks"))
