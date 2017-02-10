@@ -275,11 +275,13 @@ percent p = printf "%.3f%%" (p * 100)
 bytes :: Int64 -> String
 bytes b  = printf "%.3f %sB" val p
   where
-    prefixes = ["", "K", "M", "G", "T", "P", "E"] :: [String]
+    prefixes = [" ", "K", "M", "G", "T", "P", "E"] :: [String]
 
     base = 1024 :: Num a => a
 
-    mult = floor (logBase (base :: Double) (fromIntegral b))
+    mult
+      | b == 0    = 0
+      | otherwise = floor (logBase (base :: Double) (fromIntegral b))
 
     val = fromIntegral b / (base ^ mult)
 
