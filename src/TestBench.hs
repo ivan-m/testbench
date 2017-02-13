@@ -513,7 +513,7 @@ compBench = compWith (\op -> op { opTest = Nothing })
 -- | Only test (but do not benchmark) this value against the specified
 --   function.
 compTest :: (ca a) => String -> a -> Comparison ca b
-compTest = compWith (\op -> op { opBench = Nothing })
+compTest = compWith (\op -> op { opBench = Nothing, opWeigh = Nothing })
 
 compWith :: (ca a) => (Operation -> Operation) -> String -> a -> Comparison ca b
 compWith f nm arg = ComparisonM $ do ci <- ask
