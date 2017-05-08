@@ -146,6 +146,7 @@ type Path = [String]
 data Row = Row { rowLabel  :: !String
                , rowPath   :: !Path -- ^ Invariant: length == rowDepth
                , rowDepth  :: {-# UNPACK #-} !Int
+               , isLeaf    :: !Bool
                , rowBench  :: !(Maybe BenchResults)
                , rowWeight :: !(Maybe Weight)
                }
@@ -162,7 +163,7 @@ toRows cfg = f2r DL.empty
     t2r :: PathList -> EvalTree -> IO ()
     t2r pl bt = case bt of
                   Leaf   d e      -> makeRow cfg pth d e >>= printRow ep
-                  Branch d lbl ts -> do printRow ep (Row lbl pth d Nothing Nothing)
+                  Branch d lbl ts -> do printRow ep (Row lbl pth d False Nothing Nothing)
                                         f2r (pl `DL.snoc` lbl) ts
       where
         pth = DL.toList pl
@@ -170,7 +171,7 @@ toRows cfg = f2r DL.empty
     ep = evalParam cfg
 
 makeRow :: EvalConfig -> Path -> Int -> Eval -> IO Row
-makeRow cfg pth d e = Row lbl pth d
+makeRow cfg pth d e = Row lbl pth d True
                       <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
                       <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
   where
