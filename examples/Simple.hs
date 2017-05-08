@@ -40,7 +40,7 @@ main = testBench $ do
               (mapM_ (\n -> comp ("len == " ++ show n) n) [1..5])
 
   compareFuncConstraint (Proxy :: Proxy Sequential)
-                        "Length of different linear types"
+                        "Length of linear types"
                         len
                         [baseline "Lists" sampleList, benchNormalForm]
                         $ do comp "sequence" (Seq.fromList sampleList)
@@ -48,7 +48,7 @@ main = testBench $ do
                              comp "lazy bytestring" (LB.pack sampleList)
 
 sampleList :: [Word8]
-sampleList = [1..10]
+sampleList = replicate 1000000 0
 
 class Sequential xs where
   len :: xs -> Int
