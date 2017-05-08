@@ -87,7 +87,8 @@ configParser Config{..} = Config
   -- bother asking for these as inputs.
   <*> pure Nothing -- rawDataFile
   <*> pure Nothing -- reportFile
-  <*> pure Nothing -- csvFile
+  <*> optional (strOption (long "csv" <> metavar "FILE" <> help "File to write CSV summary to" <>
+                           maybe mempty value csvFile))
   <*> pure Nothing -- jsonFile
   <*> pure Nothing -- junitFile
   <*> pure verbosity -- Doesn't change
