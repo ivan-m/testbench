@@ -40,6 +40,8 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
+import qualified Data.DList as DL
+
 import Control.Applicative (liftA2)
 import Control.DeepSeq     (NFData)
 import Control.Monad       (when, zipWithM_)
@@ -139,31 +141,38 @@ data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
 
 --------------------------------------------------------------------------------
 
+type Path = [String]
+
 data Row = Row { rowLabel  :: !String
+               , rowPath   :: !Path -- ^ Invariant: length == rowDepth
                , rowDepth  :: {-# UNPACK #-} !Int
                , rowBench  :: !(Maybe BenchResults)
                , rowWeight :: !(Maybe Weight)
                }
   deriving (Eq, Show, Read)
 
-toRows :: EvalConfig -> EvalForest -> IO ()
-toRows cfg = f2r
-  where
-    f2r :: EvalForest -> IO ()
-    f2r = mapM_ t2r
+type PathList = DL.DList String
 
-    t2r :: EvalTree -> IO ()
-    t2r bt = case bt of
-               Leaf   d e      -> makeRow cfg d e >>= printRow ep
-               Branch d lbl ts -> do printRow ep (Row lbl d Nothing Nothing)
-                                     f2r ts
+toRows :: EvalConfig -> EvalForest -> IO ()
+toRows cfg = f2r DL.empty
+  where
+    f2r :: PathList -> EvalForest -> IO ()
+    f2r pl = mapM_ (t2r pl)
+
+    t2r :: PathList -> EvalTree -> IO ()
+    t2r pl bt = case bt of
+                  Leaf   d e      -> makeRow cfg pth d e >>= printRow ep
+                  Branch d lbl ts -> do printRow ep (Row lbl pth d Nothing Nothing)
+                                        f2r (pl `DL.snoc` lbl) ts
+      where
+        pth = DL.toList pl
 
     ep = evalParam cfg
 
-makeRow :: EvalConfig -> Int -> Eval -> IO Row
-makeRow cfg d e = Row lbl d
-                  <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
-                  <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
+makeRow :: EvalConfig -> Path -> Int -> Eval -> IO Row
+makeRow cfg pth d e = Row lbl pth d
+                      <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
+                      <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
   where
     lbl = eName e
     ep = evalParam cfg

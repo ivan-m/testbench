@@ -49,6 +49,7 @@ library
                      , Paths_testbench
   build-depends:       base >=4.7 && <4.11
                      , criterion >= 1.1.4.0 && < 1.2
+                     , dlist == 0.8.*
                      , deepseq
                      , HUnit
                      , optparse-applicative
