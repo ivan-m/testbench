@@ -54,6 +54,7 @@ library
                      , HUnit
                      , optparse-applicative
                      , statistics
+                     , streaming == 0.1.*
                      , transformers
                      , weigh >= 0.0.4 && < 0.1
 

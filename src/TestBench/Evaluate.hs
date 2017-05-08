@@ -40,14 +40,17 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
-import qualified Data.DList as DL
+import qualified Data.DList        as DL
+import           Streaming         (Of, Stream)
+import qualified Streaming.Prelude as S
 
-import Control.Applicative (liftA2)
-import Control.DeepSeq     (NFData)
-import Control.Monad       (when, zipWithM_)
-import Data.Int            (Int64)
-import Data.Maybe          (isJust, mapMaybe)
-import Text.Printf         (printf)
+import Control.Applicative       (liftA2)
+import Control.DeepSeq           (NFData)
+import Control.Monad             (when, zipWithM_)
+import Control.Monad.Trans.Class (lift)
+import Data.Int                  (Int64)
+import Data.Maybe                (isJust, mapMaybe)
+import Text.Printf               (printf)
 
 --------------------------------------------------------------------------------
 
@@ -98,7 +101,7 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
                        let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
                            ec = EC cfg ep'
                        printHeaders ep'
-                       toRows ec ef
+                       S.mapM_ (printRow (evalParam ec)) $ toRows ec ef
   where
     ep = checkForest ef
 
@@ -154,21 +157,19 @@ data Row = Row { rowLabel  :: !String
 
 type PathList = DL.DList String
 
-toRows :: EvalConfig -> EvalForest -> IO ()
+toRows :: EvalConfig -> EvalForest -> Stream (Of Row) IO ()
 toRows cfg = f2r DL.empty
   where
-    f2r :: PathList -> EvalForest -> IO ()
+    f2r :: PathList -> EvalForest -> Stream (Of Row) IO ()
     f2r pl = mapM_ (t2r pl)
 
-    t2r :: PathList -> EvalTree -> IO ()
+    t2r :: PathList -> EvalTree -> Stream (Of Row) IO ()
     t2r pl bt = case bt of
-                  Leaf   d e      -> makeRow cfg pth d e >>= printRow ep
-                  Branch d lbl ts -> do printRow ep (Row lbl pth d False Nothing Nothing)
-                                        f2r (pl `DL.snoc` lbl) ts
+                  Leaf   d e      -> lift (makeRow cfg pth d e) >>= S.yield
+                  Branch d lbl ts -> S.cons (Row lbl pth d False Nothing Nothing)
+                                            (f2r (pl `DL.snoc` lbl) ts)
       where
         pth = DL.toList pl
-
-    ep = evalParam cfg
 
 makeRow :: EvalConfig -> Path -> Int -> Eval -> IO Row
 makeRow cfg pth d e = Row lbl pth d True
