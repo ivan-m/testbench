@@ -54,7 +54,7 @@ library
                      , optparse-applicative
                      , statistics
                      , transformers
-                     , weigh == 0.0.*
+                     , weigh >= 0.0.4 && < 0.1
 
                      -- Not actually used, but need to specify this to
                      -- help the solver in cabal-install-1.22 get a

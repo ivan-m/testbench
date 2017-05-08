@@ -65,7 +65,7 @@ data GetWeight where
   GetWeight :: forall a b. (NFData b) => (a -> b) -> a -> GetWeight
 
 runGetWeight :: GetWeight -> IO Weight
-runGetWeight (GetWeight f a) = uncurry Weight <$> weighFunc f a
+runGetWeight (GetWeight f a) = (\(b,gc,_,_) -> Weight b gc) <$> weighFunc f a
 
 data Weight = Weight { bytesAlloc :: !Int64
                      , numGC      :: !Int64
