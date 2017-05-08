@@ -223,7 +223,10 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
   where
     -- Set this here just in case someone didn't use the top-level
     -- 'testBench' function.
-    cfg' = cfg { verbosity = Quiet }
+    --
+    -- Also, just in case a CSV file is being outputted, don't try and
+    -- write to it.
+    cfg' = cfg { verbosity = Quiet, csvFile = Nothing }
 
     i = 0 -- We're ignoring this value anyway, so it should be OK to
           -- just set it.
