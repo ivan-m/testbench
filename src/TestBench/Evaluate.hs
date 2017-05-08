@@ -40,11 +40,16 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
-import Data.Csv
+import Data.Csv             (Field, ToField, ToRecord(..), record, toField)
+import Data.Csv.Incremental (encode, encodeRecord)
 
-import qualified Data.DList        as DL
-import           Streaming         (Of, Stream)
-import qualified Streaming.Prelude as S
+import           Control.Monad.Trans.Resource (runResourceT)
+import           Data.ByteString              (ByteString)
+import           Data.ByteString.Lazy         (toStrict)
+import qualified Data.ByteString.Streaming    as B
+import qualified Data.DList                   as DL
+import           Streaming                    (Of, Stream, hoist, mapsM_)
+import qualified Streaming.Prelude            as S
 
 import Control.Applicative       (liftA2)
 import Control.DeepSeq           (NFData)
@@ -104,9 +109,28 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
                        let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
                            ec = EC cfg ep'
                        printHeaders ep'
-                       S.mapM_ (printRow (evalParam ec)) $ toRows ec ef
+                       maybeCSV . S.mapM (printReturn ep') $ toRows ec ef
   where
     ep = checkForest ef
+
+    printReturn ep' r = printRow ep' r *> return r
+
+    maybeCSV = maybe (mapsM_ (return . S.snd')) streamCSV (csvFile cfg)
+
+streamCSV :: FilePath -> Stream (Of Row) IO () -> IO ()
+streamCSV fp = runResourceT
+               . B.writeFile fp
+               . hoist lift
+               . B.fromChunks
+               -- This needs to be here for the types
+               . S.cons (toBS hdrs)
+               . S.map toBS
+               . S.filter isLeaf
+  where
+    hdrs = "Label" : map snd benchHeaders ++ map snd weighHeaders
+
+    toBS :: (ToRecord a) => a -> ByteString
+    toBS = toStrict . encode . encodeRecord
 
 data EvalParams = EP { hasBench  :: !Bool
                      , hasWeigh  :: !Bool

@@ -48,14 +48,17 @@ library
                      , TestBench.LabelTree
                      , Paths_testbench
   build-depends:       base >=4.7 && <4.11
+                     , bytestring
                      , cassava == 0.4.*
                      , criterion >= 1.1.4.0 && < 1.2
                      , dlist == 0.8.*
                      , deepseq
                      , HUnit
                      , optparse-applicative
+                     , resourcet
                      , statistics
                      , streaming == 0.1.*
+                     , streaming-bytestring == 0.1.*
                      , transformers
                      , weigh >= 0.0.4 && < 0.1
   hs-source-dirs:      src
