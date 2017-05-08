@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, RankNTypes #-}
+{-# LANGUAGE GADTs, OverloadedStrings, RankNTypes #-}
 
 {- |
    Module      : TestBench.Evaluate
@@ -40,7 +40,8 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
-import Data.Csv             (Field, ToField, ToRecord(..), record, toField)
+import Data.Csv             (Field, Header, Name, ToField, ToNamedRecord(..),
+                             ToRecord(..), namedRecord, record, toField)
 import Data.Csv.Incremental (encode, encodeRecord)
 
 import           Control.Monad.Trans.Resource (runResourceT)
@@ -58,6 +59,7 @@ import Control.Monad.Trans.Class (lift)
 import Data.Int                  (Int64)
 import Data.List                 (intercalate)
 import Data.Maybe                (isJust, mapMaybe)
+import Data.String               (IsString)
 import Text.Printf               (printf)
 
 --------------------------------------------------------------------------------
@@ -127,7 +129,7 @@ streamCSV fp = runResourceT
                . S.map toBS
                . S.filter isLeaf
   where
-    hdrs = "Label" : map snd benchHeaders ++ map snd weighHeaders
+    hdrs = labelName : benchNames ++ weighNames
 
     toBS :: (ToRecord a) => a -> ByteString
     toBS = toStrict . encode . encodeRecord
@@ -182,12 +184,15 @@ data Row = Row { rowLabel  :: !String
                }
   deriving (Eq, Show, Read)
 
+pathLabel :: Row -> String
+pathLabel row = intercalate "/" (DL.toList (DL.snoc (rowPath row) (rowLabel row)))
+
 -- | Unlike terminal output, this instance creates columns for benchmarks, weighing, etc. even if they're not used.
 instance ToRecord Row where
   toRecord row =
     record (toField fmtLabel : benchRecord ++ weightRecord)
     where
-      fmtLabel = intercalate "/" (DL.toList (DL.snoc (rowPath row) (rowLabel row)))
+      fmtLabel = pathLabel row
 
       benchRecord = timed resMean ++ timed resStdDev ++ [bField (ovFraction . resOutVar)]
         where
@@ -195,6 +200,27 @@ instance ToRecord Row where
           timed f = map (bField . (. f)) [estPoint, estLowerBound, estUpperBound]
 
       weightRecord = [wField bytesAlloc, wField numGC]
+        where
+          wField = mField . (. rowWeight) . fmap
+
+      mField :: (ToField a) => (Row -> Maybe a) -> Field
+      mField f = maybe mempty toField (f row)
+
+-- | Unlike terminal output, this instance creates columns for benchmarks, weighing, etc. even if they're not used.
+instance ToNamedRecord Row where
+  toNamedRecord row =
+    namedRecord (fmtLabel : benchRecord ++ weightRecord)
+    where
+      fmtLabel = (labelName, toField (pathLabel row))
+
+      benchRecord = zip benchNames
+                        (timed resMean ++ timed resStdDev ++ [bField (ovFraction . resOutVar)])
+        where
+          bField = mField . (. rowBench) . fmap
+          timed f = map (bField . (. f)) [estPoint, estLowerBound, estUpperBound]
+
+      weightRecord = zip weighNames
+                         [wField bytesAlloc, wField numGC]
         where
           wField = mField . (. rowWeight) . fmap
 
@@ -283,12 +309,20 @@ columnGap = 2
 columnSpace :: String
 columnSpace = replicate columnGap ' '
 
+labelName :: Name
+labelName = "Label"
+
+benchNames :: (IsString str) => [str]
+benchNames = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
+
 benchHeaders :: [(Int, String)]
-benchHeaders = map addWidth
-                   ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
+benchHeaders = map addWidth benchNames
+
+weighNames :: (IsString str) => [str]
+weighNames = ["AllocBytes", "NumGC"]
 
 weighHeaders :: [(Int, String)]
-weighHeaders = map addWidth ["AllocBytes", "NumGC"]
+weighHeaders = map addWidth weighNames
 
 -- Maximum width a numeric field can take.  Might as well make them
 -- all the same width.  All other formatters have been manually
