@@ -40,6 +40,8 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
+import Data.Csv
+
 import qualified Data.DList        as DL
 import           Streaming         (Of, Stream)
 import qualified Streaming.Prelude as S
@@ -49,6 +51,7 @@ import Control.DeepSeq           (NFData)
 import Control.Monad             (when, zipWithM_)
 import Control.Monad.Trans.Class (lift)
 import Data.Int                  (Int64)
+import Data.List                 (intercalate)
 import Data.Maybe                (isJust, mapMaybe)
 import Text.Printf               (printf)
 
@@ -144,10 +147,10 @@ data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
 
 --------------------------------------------------------------------------------
 
-type Path = [String]
+type PathList = DL.DList String
 
 data Row = Row { rowLabel  :: !String
-               , rowPath   :: !Path -- ^ Invariant: length == rowDepth
+               , rowPath   :: !PathList -- ^ Invariant: length == rowDepth
                , rowDepth  :: {-# UNPACK #-} !Int
                , isLeaf    :: !Bool
                , rowBench  :: !(Maybe BenchResults)
@@ -155,7 +158,24 @@ data Row = Row { rowLabel  :: !String
                }
   deriving (Eq, Show, Read)
 
-type PathList = DL.DList String
+-- | Unlike terminal output, this instance creates columns for benchmarks, weighing, etc. even if they're not used.
+instance ToRecord Row where
+  toRecord row =
+    record (toField fmtLabel : benchRecord ++ weightRecord)
+    where
+      fmtLabel = intercalate "/" (DL.toList (DL.snoc (rowPath row) (rowLabel row)))
+
+      benchRecord = timed resMean ++ timed resStdDev ++ [bField (ovFraction . resOutVar)]
+        where
+          bField = mField . (. rowBench) . fmap
+          timed f = map (bField . (. f)) [estPoint, estLowerBound, estUpperBound]
+
+      weightRecord = [wField bytesAlloc, wField numGC]
+        where
+          wField = mField . (. rowWeight) . fmap
+
+      mField :: (ToField a) => (Row -> Maybe a) -> Field
+      mField f = maybe mempty toField (f row)
 
 toRows :: EvalConfig -> EvalForest -> Stream (Of Row) IO ()
 toRows cfg = f2r DL.empty
@@ -165,16 +185,14 @@ toRows cfg = f2r DL.empty
 
     t2r :: PathList -> EvalTree -> Stream (Of Row) IO ()
     t2r pl bt = case bt of
-                  Leaf   d e      -> lift (makeRow cfg pth d e) >>= S.yield
-                  Branch d lbl ts -> S.cons (Row lbl pth d False Nothing Nothing)
+                  Leaf   d e      -> lift (makeRow cfg pl d e) >>= S.yield
+                  Branch d lbl ts -> S.cons (Row lbl pl d False Nothing Nothing)
                                             (f2r (pl `DL.snoc` lbl) ts)
-      where
-        pth = DL.toList pl
 
-makeRow :: EvalConfig -> Path -> Int -> Eval -> IO Row
-makeRow cfg pth d e = Row lbl pth d True
-                      <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
-                      <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
+makeRow :: EvalConfig -> PathList -> Int -> Eval -> IO Row
+makeRow cfg pl d e = Row lbl pl d True
+                     <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
+                     <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
   where
     lbl = eName e
     ep = evalParam cfg

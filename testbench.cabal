@@ -48,6 +48,7 @@ library
                      , TestBench.LabelTree
                      , Paths_testbench
   build-depends:       base >=4.7 && <4.11
+                     , cassava == 0.4.*
                      , criterion >= 1.1.4.0 && < 1.2
                      , dlist == 0.8.*
                      , deepseq
@@ -57,11 +58,6 @@ library
                      , streaming == 0.1.*
                      , transformers
                      , weigh >= 0.0.4 && < 0.1
-
-                     -- Not actually used, but need to specify this to
-                     -- help the solver in cabal-install-1.22 get a
-                     -- working install plan.
-                     , cassava == 0.4.*
   hs-source-dirs:      src
   default-language:    Haskell2010
 
