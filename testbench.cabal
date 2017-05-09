@@ -85,4 +85,4 @@ executable examples
                      , criterion
                      , HUnit
 
-  ghc-options:       -Wall
+  ghc-options:       -Wall -with-rtsopts=-T
