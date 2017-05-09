@@ -40,7 +40,7 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
-import Data.Csv             (Field, Header, Name, ToField, ToNamedRecord(..),
+import Data.Csv             (Field, Name, ToField, ToNamedRecord(..),
                              ToRecord(..), namedRecord, record, toField)
 import Data.Csv.Incremental (encode, encodeRecord)
 
