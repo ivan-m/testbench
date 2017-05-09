@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds, FlexibleInstances, MultiParamTypeClasses,
-             TypeFamilies, UndecidableInstances #-}
+             RankNTypes, TypeApplications, TypeFamilies, UndecidableInstances
+             #-}
 
 {- |
    Module      : Main
@@ -47,23 +48,52 @@ main = testBench $ do
                              comp "strict bytestring" (SB.pack sampleList)
                              comp "lazy bytestring" (LB.pack sampleList)
 
+  compareFuncAll "Packing and length"
+                 (`chooseType` listLength)
+                 normalForm
+
+data SequenceType = List
+                  | Sequence
+                  | StrictBS
+                  | LazyBS
+  deriving (Eq, Ord, Show, Read, Enum, Bounded)
+
+listLength :: (Sequential l) => Proxy l -> Int
+listLength st = len (st `pack` sampleList)
+
+chooseType :: SequenceType -> (forall s. (Sequential s) => Proxy s -> k) -> k
+chooseType List      k = (k (Proxy @[Word8]))
+chooseType Sequence  k = (k (Proxy @(Seq.Seq Word8)))
+chooseType StrictBS  k = (k (Proxy @SB.ByteString))
+chooseType LazyBS    k = (k (Proxy @LB.ByteString))
+
 sampleList :: [Word8]
 sampleList = replicate 1000000 0
 
 class Sequential xs where
   len :: xs -> Int
 
+  pack :: Proxy xs -> [Word8] -> xs
+
 instance Sequential [Word8] where
   len = length
+
+  pack _ = id
 
 instance Sequential (Seq.Seq Word8) where
   len = length
 
+  pack _ = Seq.fromList
+
 instance Sequential SB.ByteString where
   len = SB.length
 
+  pack _ = SB.pack
+
 instance Sequential LB.ByteString where
   len = fromIntegral . LB.length
+
+  pack _ = LB.pack
 
 --------------------------------------------------------------------------------
 
