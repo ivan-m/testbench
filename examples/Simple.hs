@@ -61,10 +61,10 @@ listLength :: (Sequential l) => Proxy l -> Int
 listLength st = len (st `pack` sampleList)
 
 chooseType :: SequenceType -> (forall s. (Sequential s) => Proxy s -> k) -> k
-chooseType List      k = (k (Proxy :: Proxy [Word8]))
-chooseType Sequence  k = (k (Proxy :: Proxy (Seq.Seq Word8)))
-chooseType StrictBS  k = (k (Proxy :: Proxy SB.ByteString))
-chooseType LazyBS    k = (k (Proxy :: Proxy LB.ByteString))
+chooseType List      k = k (Proxy :: Proxy [Word8])
+chooseType Sequence  k = k (Proxy :: Proxy (Seq.Seq Word8))
+chooseType StrictBS  k = k (Proxy :: Proxy SB.ByteString)
+chooseType LazyBS    k = k (Proxy :: Proxy LB.ByteString)
 
 sampleList :: [Word8]
 sampleList = replicate 1000000 0
