@@ -40,16 +40,14 @@ import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
-import Data.Csv             (Field, Name, ToField, ToNamedRecord(..),
-                             ToRecord(..), namedRecord, record, toField)
-import Data.Csv.Incremental (encode, encodeRecord)
+import Data.Csv (DefaultOrdered(..), Field, Name, ToField, ToNamedRecord(..),
+                 ToRecord(..), header, namedRecord, record, toField)
 
 import           Control.Monad.Trans.Resource (runResourceT)
-import           Data.ByteString              (ByteString)
-import           Data.ByteString.Lazy         (toStrict)
 import qualified Data.ByteString.Streaming    as B
 import qualified Data.DList                   as DL
 import           Streaming                    (Of, Stream, hoist, mapsM_)
+import           Streaming.Cassava            (encodeByNameDefault)
 import qualified Streaming.Prelude            as S
 
 import Control.Applicative       (liftA2)
@@ -123,16 +121,8 @@ streamCSV :: FilePath -> Stream (Of Row) IO () -> IO ()
 streamCSV fp = runResourceT
                . B.writeFile fp
                . hoist lift
-               . B.fromChunks
-               -- This needs to be here for the types
-               . S.cons (toBS hdrs)
-               . S.map toBS
+               . encodeByNameDefault
                . S.filter isLeaf
-  where
-    hdrs = labelName : benchNames ++ weighNames
-
-    toBS :: (ToRecord a) => a -> ByteString
-    toBS = toStrict . encode . encodeRecord
 
 data EvalParams = EP { hasBench  :: !Bool
                      , hasWeigh  :: !Bool
@@ -226,6 +216,9 @@ instance ToNamedRecord Row where
 
       mField :: (ToField a) => (Row -> Maybe a) -> Field
       mField f = maybe mempty toField (f row)
+
+instance DefaultOrdered Row where
+  headerOrder _ = header (labelName : benchNames ++ weighNames)
 
 toRows :: EvalConfig -> EvalForest -> Stream (Of Row) IO ()
 toRows cfg = f2r DL.empty
