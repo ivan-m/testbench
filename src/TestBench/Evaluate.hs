@@ -126,7 +126,7 @@ streamCSV fp = runResourceT
 
 data EvalParams = EP { hasBench  :: !Bool
                      , hasWeigh  :: !Bool
-                     , nameWidth :: !Int
+                     , nameWidth :: !Width
                      }
                 deriving (Eq, Ord, Show, Read)
 
@@ -165,9 +165,11 @@ data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
 
 type PathList = DL.DList String
 
+type Depth = Int
+
 data Row = Row { rowLabel  :: !String
                , rowPath   :: !PathList -- ^ Invariant: length == rowDepth
-               , rowDepth  :: {-# UNPACK #-} !Int
+               , rowDepth  :: {-# UNPACK #-} !Depth
                , isLeaf    :: !Bool
                , rowBench  :: !(Maybe BenchResults)
                , rowWeight :: !(Maybe Weight)
@@ -232,7 +234,7 @@ toRows cfg = f2r DL.empty
                   Branch d lbl ts -> S.cons (Row lbl pl d False Nothing Nothing)
                                             (f2r (pl `DL.snoc` lbl) ts)
 
-makeRow :: EvalConfig -> PathList -> Int -> Eval -> IO Row
+makeRow :: EvalConfig -> PathList -> Depth -> Eval -> IO Row
 makeRow cfg pl d e = Row lbl pl d True
                      <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
                      <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
@@ -293,10 +295,12 @@ printRow ep r = do printf "%-*s" (nameWidth ep) label
     label :: String
     label = printf "%s%s" (replicate (rowDepth r * indentPerLevel) ' ') (rowLabel r)
 
-indentPerLevel :: Int
+type Width = Int
+
+indentPerLevel :: Width
 indentPerLevel = 2
 
-columnGap :: Int
+columnGap :: Width
 columnGap = 2
 
 columnSpace :: String
@@ -308,22 +312,22 @@ labelName = "Label"
 benchNames :: (IsString str) => [str]
 benchNames = ["Mean", "MeanLB", "MeanUB", "Stddev", "StddevLB", "StddevUB", "OutlierVariance"]
 
-benchHeaders :: [(Int, String)]
+benchHeaders :: [(Width, String)]
 benchHeaders = map addWidth benchNames
 
 weighNames :: (IsString str) => [str]
 weighNames = ["AllocBytes", "NumGC"]
 
-weighHeaders :: [(Int, String)]
+weighHeaders :: [(Width, String)]
 weighHeaders = map addWidth weighNames
 
 -- Maximum width a numeric field can take.  Might as well make them
 -- all the same width.  All other formatters have been manually
 -- adjusted to produce nothing longer than this.
-secsWidth :: Int
+secsWidth :: Width
 secsWidth = length (secs ((-pi) / 000))
 
-addWidth :: String -> (Int, String)
+addWidth :: String -> (Width, String)
 addWidth nm = (max (length nm) secsWidth, nm)
 
 printBench :: Maybe BenchResults -> IO ()
