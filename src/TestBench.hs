@@ -466,7 +466,7 @@ benchNormalForm = withBenchMode nf
 
 -- | A combination of 'benchNormalForm' and 'weigh', taking into
 --   account the common case that you want to consider a value that
---   can -- and should -- be evaluated to normal form.
+--   can - and should - be evaluated to normal form.
 normalForm :: (NFData b) => CompParams a b
 normalForm = benchNormalForm `mappend` weigh
 
