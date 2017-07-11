@@ -124,10 +124,9 @@ import Criterion.Types (Config)
 import Test.HUnit.Base (Assertion, Counts(..), Test(..), (@=?), (~:))
 import Test.HUnit.Text (runTestTT)
 
-import Control.Applicative             (liftA2)
 import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData(..))
-import Control.Monad                   (join, when)
+import Control.Monad                   (when)
 import Control.Monad.IO.Class          (MonadIO(liftIO))
 import Control.Monad.Trans.Class       (lift)
 import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
@@ -533,7 +532,11 @@ baseline = baselineWith (@=?)
 
 -- | A variant of 'baseline' where the function returns an 'IO' value.
 baselineIO :: (Eq b, Show b) => String -> a -> CompParams a (IO b)
-baselineIO = baselineWith (join .: liftA2 (@=?))
+baselineIO = baselineWith (liftA2' (@=?))
+  where
+    liftA2' f ma mb = do a <- ma
+                         b <- mb
+                         f a b
 
 baselineWith :: (b -> b -> Assertion) -> String -> a -> CompParams a b
 baselineWith mkAssert nm arg = mempty { withOps = addOp
