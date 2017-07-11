@@ -43,8 +43,7 @@ flag examples
 library
   exposed-modules:     TestBench
                      , TestBench.Commands
-  other-modules:       TestBench.Constraints
-                     , TestBench.Evaluate
+  other-modules:       TestBench.Evaluate
                      , TestBench.LabelTree
                      , Paths_testbench
   build-depends:       base >=4.7 && <4.11
