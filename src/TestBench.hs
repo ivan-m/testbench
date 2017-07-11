@@ -64,6 +64,9 @@ module TestBench
 
     -- * Comparisons
   , compareFunc
+
+    -- ** List of input values
+    -- $listbased
   , compareFuncList
   , compareFuncList'
   , compareFuncAll
@@ -283,6 +286,88 @@ compareFunc lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
     ci = appEndo (mkOps params') ci0
 
     withOps' = appEndo (withOps params' ci)
+
+{- $listbased
+
+Rather than manually stating all the arguments - especially if you're
+either a) dealing with a few different types or b) repeating all the
+possible targets a few times - it can be helpful to instead use an
+enum type to indicate all the possible options with a helper type
+class to generate all the possible benchmarks.
+
+For example, consider a case where you wish to compare data structures
+of @Word8@ values:
+
+> import qualified Data.ByteString      as SB
+> import qualified Data.ByteString.Lazy as LB
+> import           Data.Monoid          ((<>))
+> import           Data.Proxy           (Proxy(..))
+> import qualified Data.Sequence        as Seq
+>
+> -- | All the types we care about.
+> data SequenceType = List
+>                   | Sequence
+>                   | StrictBS
+>                   | LazyBS
+>   deriving (Eq, Ord, Show, Read, Enum, Bounded)
+>
+> -- | The function we actually want to benchmark.
+> listLength :: (Sequential l) => Proxy l -> Int
+> listLength st = len (st `pack` sampleList)
+>
+> -- | How to run a function on our chosen type.
+> chooseType :: SequenceType -> (forall s. (Sequential s) => Proxy s -> k) -> k
+> chooseType List      k = k (Proxy :: Proxy [Word8])
+> chooseType Sequence  k = k (Proxy :: Proxy (Seq.Seq Word8))
+> chooseType StrictBS  k = k (Proxy :: Proxy SB.ByteString)
+> chooseType LazyBS    k = k (Proxy :: Proxy LB.ByteString)
+>
+> sampleList :: [Word8]
+> sampleList = replicate 1000000 0
+>
+> -- | A common type class containing all the functions we want to test.
+> class Sequential xs where
+>   len :: xs -> Int
+>
+>   pack :: Proxy xs -> [Word8] -> xs
+>
+> instance Sequential [Word8] where
+>   len = length
+>
+>   pack _ = id
+>
+> instance Sequential (Seq.Seq Word8) where
+>   len = length
+>
+>   pack _ = Seq.fromList
+>
+> instance Sequential SB.ByteString where
+>   len = SB.length
+>
+>   pack _ = SB.pack
+>
+> instance Sequential LB.ByteString where
+>   len = fromIntegral . LB.length
+>
+>   pack _ = LB.pack
+
+We can then write as our benchmark:
+
+@
+'compareFuncAll' "Packing and length"
+               (flip chooseType listLength)
+               'normalForm'
+@
+
+This may seem like a lot of up-front work just to avoid having to
+write out all the cases manually, but if you write a lot of similar
+benchmarks comparing different aspects of these sequential structures
+then the @chooseType@ function ends up being rather trivial to write
+(but alas, barring Template Haskell, not possible to easily automate).
+
+Furthermore, you can now be sure that you won't forget a case!
+
+-}
 
 -- | As with 'compareFunc' but use the provided list of values to base
 --   the benchmarking off of.
