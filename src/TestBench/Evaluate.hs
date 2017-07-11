@@ -46,7 +46,7 @@ import Data.Csv (DefaultOrdered(..), Field, Name, ToField, ToNamedRecord(..),
 import           Control.Monad.Trans.Resource (runResourceT)
 import qualified Data.ByteString.Streaming    as B
 import qualified Data.DList                   as DL
-import           Streaming                    (Of, Stream, hoist, mapsM_)
+import           Streaming                    (Of, Stream, hoist)
 import           Streaming.Cassava            (encodeByNameDefault)
 import qualified Streaming.Prelude            as S
 
@@ -115,7 +115,7 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
 
     printReturn ep' r = printRow ep' r *> return r
 
-    maybeCSV = maybe (mapsM_ (return . S.snd')) streamCSV (csvFile cfg)
+    maybeCSV = maybe S.effects streamCSV (csvFile cfg)
 
 streamCSV :: FilePath -> Stream (Of Row) IO () -> IO ()
 streamCSV fp = runResourceT
