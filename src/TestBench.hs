@@ -42,6 +42,7 @@ module TestBench
     TestBench
   , testBench
   , testBenchWith
+  , testBenchConfig
 
     -- * Grouping
   , collection

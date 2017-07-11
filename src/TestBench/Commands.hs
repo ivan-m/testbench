@@ -67,6 +67,8 @@ parseWith cfg =
 versionInfo :: String
 versionInfo = "TestBench - " ++ showVersion version
 
+-- | This is the same as 'defaultConfig' from criterion but with the
+--   verbosity set to 'Quiet' to avoid unnecessary noise on stdout.
 testBenchConfig :: Config
 testBenchConfig = defaultConfig { verbosity = Quiet }
 
