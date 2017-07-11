@@ -44,6 +44,7 @@ module TestBench
   , testBenchWith
     -- ** Running manually
   , getTestBenches
+  , Eval(..)
   , EvalTree
   , EvalForest
   , flattenBenchForest
@@ -53,6 +54,7 @@ module TestBench
   , OpTree
   , Operation
   , LabelTree(..)
+  , Depth
 
     -- * Grouping
   , collection
@@ -74,6 +76,7 @@ module TestBench
 
     -- ** Comparison parameters
   , CompParams
+  , ProvideParams(..)
   , normalForm
   , normalFormIO
     -- *** Control benchmarking
