@@ -298,7 +298,7 @@ zeroIndex :: Index
 zeroIndex = 0
 
 tryGetWeight :: Index -> IO (Maybe Weight)
-tryGetWeight idx = withSystemTempFile "testBench.Weighing." $ \fp h -> do
+tryGetWeight idx = withSystemTempFile "testBench.weigh" $ \fp h -> do
   -- We use a temporary file in case the program prints something else
   -- out to stdout.
   hClose h -- We're not writing to it, just need the file
