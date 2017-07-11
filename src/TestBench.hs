@@ -25,18 +25,6 @@ For example:
 >               (\n -> length (replicate n ()) == n)
 >               [testWith (@? "Not as long as specified"), benchNormalForm]
 >               (mapM_ (\n -> comp ("len == " ++ show n) n) [1..5])
->
->   -- Polymorphic comparisons.
->   --
->   -- Currently it isn't possible to use a Proxy as the argument to
->   -- the function (this will probably require Injective Type Families
->   -- in GHC 8.0), so we're using 'undefined' to specify the type.
->   compareFuncConstraint (Proxy :: Proxy (CUnion Eq Num))
->                         "Number type equality"
->                         (join (==) . (0`asTypeOf`))
->                         [baseline "Integer" (undefined :: Integer), benchNormalForm]
->                         $ do comp "Int"     (undefined :: Int)
->                              comp "Double"  (undefined :: Double)
 
 When run, the output will look something like:
 
@@ -48,10 +36,6 @@ When run, the output will look something like:
 >   len == 3            372.4 ns  358.4 ns  393.8 ns  62.50 ns  39.83 ns  90.85 ns              96%
 >   len == 4            396.3 ns  378.4 ns  419.2 ns  67.83 ns  46.71 ns  94.74 ns              96%
 >   len == 5            426.0 ns  407.0 ns  459.5 ns  82.23 ns  53.37 ns  110.2 ns              97%
-> Number type equality
->   Integer             75.43 ns  74.48 ns  76.71 ns  3.615 ns  2.748 ns  5.524 ns              69%
->   Int                 74.39 ns  73.48 ns  76.24 ns  3.964 ns  2.500 ns  7.235 ns              74%
->   Double              78.05 ns  75.84 ns  82.50 ns  9.790 ns  6.133 ns  16.99 ns              94%
 
  -}
 module TestBench
