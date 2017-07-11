@@ -55,11 +55,13 @@ library
                      , deepseq
                      , HUnit
                      , optparse-applicative
+                     , process
                      , resourcet
                      , statistics
                      , streaming == 0.1.*
                      , streaming-bytestring == 0.1.*
                      , streaming-cassava == 0.1.*
+                     , temporary
                      , transformers
                      , weigh >= 0.0.4 && < 0.1
   hs-source-dirs:      src
@@ -86,4 +88,4 @@ executable examples
                      , criterion
                      , HUnit
 
-  ghc-options:       -Wall -with-rtsopts=-T
+  ghc-options:       -Wall

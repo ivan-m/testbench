@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs, OverloadedStrings, RankNTypes #-}
+{-# LANGUAGE BangPatterns, FlexibleContexts, GADTs, OverloadedStrings,
+             RankNTypes #-}
 
 {- |
    Module      : TestBench.Evaluate
@@ -28,6 +29,7 @@ module TestBench.Evaluate
   , weighIndex
   ) where
 
+import TestBench.Commands  (weighFileArg, weighIndexArg)
 import TestBench.LabelTree
 
 import Criterion.Analysis              (OutlierVariance(ovFraction),
@@ -38,7 +40,6 @@ import Criterion.Monad                 (withConfig)
 import Criterion.Types                 (Benchmark, Benchmarkable, Config(..),
                                         DataRecord(..), Report(..),
                                         Verbosity(..), bench, bgroup)
-import GHC.Stats                       (getGCStatsEnabled)
 import Statistics.Resampling.Bootstrap (Estimate(..))
 import Weigh                           (weighFunc)
 
@@ -52,15 +53,22 @@ import           Streaming                    (Of, Stream, hoist)
 import           Streaming.Cassava            (encodeByNameDefault)
 import qualified Streaming.Prelude            as S
 
-import Control.Applicative       (liftA2)
-import Control.DeepSeq           (NFData)
-import Control.Monad             (join, when, zipWithM_)
-import Control.Monad.Trans.Class (lift)
-import Data.Int                  (Int64)
-import Data.List                 (intercalate)
-import Data.Maybe                (isJust, listToMaybe, mapMaybe)
-import Data.String               (IsString)
-import Text.Printf               (printf)
+import Control.Applicative              (liftA2)
+import Control.DeepSeq                  (NFData)
+import Control.Monad                    (join, when, zipWithM_)
+import Control.Monad.IO.Class           (liftIO)
+import Control.Monad.Trans.Class        (lift)
+import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
+import Data.Int                         (Int64)
+import Data.List                        (intercalate)
+import Data.Maybe                       (isJust, listToMaybe, mapMaybe)
+import Data.String                      (IsString)
+import System.Environment               (getExecutablePath)
+import System.Exit                      (ExitCode(..))
+import System.IO                        (hClose)
+import System.IO.Temp                   (withSystemTempFile)
+import System.Process                   (rawSystem)
+import Text.Printf                      (printf)
 
 --------------------------------------------------------------------------------
 
@@ -107,24 +115,27 @@ flattenBenchForest = mapMaybe flattenBenchTree
 --   comparisons.
 evalForest :: Config -> EvalForest -> IO ()
 evalForest cfg ef = do when (hasBench ep) initializeTime
-                       hasStats <- getGCStatsEnabled
-                       let ep' = ep { hasWeigh = hasWeigh ep && hasStats }
-                           ec = EC cfg ep'
-                       printHeaders ep'
-                       maybeCSV . S.mapM (printReturn ep') $ toRows ec ef
+                       let ec = EC cfg ep
+                       printHeaders ep
+                       (`evalStateT` zeroIndex) . maybeCSV . S.mapM printReturn $ toRows ec ef
   where
     ep = checkForest ef
 
-    printReturn ep' r = printRow ep' r *> return r
+    printReturn r = liftIO (printRow ep r) *> return r
 
     maybeCSV = maybe S.effects streamCSV (csvFile cfg)
 
-streamCSV :: FilePath -> Stream (Of Row) IO () -> IO ()
-streamCSV fp = runResourceT
-               . B.writeFile fp
-               . hoist lift
-               . encodeByNameDefault
-               . S.filter isLeaf
+    -- In reality, this type signature contains StateT, but that
+    -- over-complicates understanding what it does, and to specify it
+    -- generically requires bringing in MonadBaseControl and
+    -- MonadThrow.
+
+    -- streamCSV :: FilePath -> Stream (Of Row) IO () -> IO ()
+    streamCSV fp = runResourceT
+                  . B.writeFile fp
+                  . hoist lift
+                  . encodeByNameDefault
+                  . S.filter isLeaf
 
 data EvalParams = EP { hasBench  :: !Bool
                      , hasWeigh  :: !Bool
@@ -222,22 +233,25 @@ instance ToNamedRecord Row where
 instance DefaultOrdered Row where
   headerOrder _ = header (labelName : benchNames ++ weighNames)
 
-toRows :: EvalConfig -> EvalForest -> Stream (Of Row) IO ()
+toRows :: EvalConfig -> EvalForest -> Stream (Of Row) (StateT Index IO) ()
 toRows cfg = f2r DL.empty
   where
-    f2r :: PathList -> EvalForest -> Stream (Of Row) IO ()
+    f2r :: PathList -> EvalForest -> Stream (Of Row) (StateT Index IO) ()
     f2r pl = mapM_ (t2r pl)
 
-    t2r :: PathList -> EvalTree -> Stream (Of Row) IO ()
+    t2r :: PathList -> EvalTree -> Stream (Of Row) (StateT Index IO) ()
     t2r pl bt = case bt of
-                  Leaf   d e      -> lift (makeRow cfg pl d e) >>= S.yield
+                  Leaf   d e      -> do i <- lift get
+                                        lift (put (i+1))
+                                        r <- liftIO (makeRow cfg pl i d e)
+                                        S.yield r
                   Branch d lbl ts -> S.cons (Row lbl pl d False Nothing Nothing)
                                             (f2r (pl `DL.snoc` lbl) ts)
 
-makeRow :: EvalConfig -> PathList -> Depth -> Eval -> IO Row
-makeRow cfg pl d e = Row lbl pl d True
-                     <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
-                     <*> tryRun hasWeigh eWeigh (fmap Just . runGetWeight)
+makeRow :: EvalConfig -> PathList -> Index -> Depth -> Eval -> IO Row
+makeRow cfg pl idx d e = Row lbl pl d True
+                         <$> tryRun hasBench eBench (getBenchResults (benchConfig cfg) lbl)
+                         <*> tryRun hasWeigh eWeigh (const (tryGetWeight idx))
   where
     lbl = eName e
     ep = evalParam cfg
@@ -278,12 +292,32 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
 
 --------------------------------------------------------------------------------
 
-weighIndex :: EvalForest -> Int -> IO (Maybe Weight)
+type Index = Int
+
+zeroIndex :: Index
+zeroIndex = 0
+
+tryGetWeight :: Index -> IO (Maybe Weight)
+tryGetWeight idx = withSystemTempFile "testBench.Weighing." $ \fp h -> do
+  -- We use a temporary file in case the program prints something else
+  -- out to stdout.
+  hClose h -- We're not writing to it, just need the file
+  exe <- getExecutablePath
+  ec <- rawSystem exe ["--" ++ weighIndexArg, show idx, "--" ++ weighFileArg, fp, "+RTS", "-T", "-RTS"]
+  case ec of
+    ExitFailure{} -> return Nothing
+    ExitSuccess   -> do
+      out <- readFile fp
+      case reads out of
+        [(!mw,_)] -> return mw
+        _         -> return Nothing
+
+weighIndex :: EvalForest -> Index -> IO (Maybe Weight)
 weighIndex ef = fmap join . mapM (mapM runGetWeight . eWeigh) . index es
   where
     es = concatMap leaves ef
 
-index :: [a] -> Int -> Maybe a
+index :: [a] -> Index -> Maybe a
 index as n = listToMaybe . drop (n-1) $ as
 
 --------------------------------------------------------------------------------

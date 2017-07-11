@@ -18,7 +18,8 @@ module TestBench.Commands
   , versionInfo
   , parseWith
   , configParser
-  , weighArg
+  , weighIndexArg
+  , weighFileArg
   ) where
 
 import Criterion.Analysis     (validateAccessors)
@@ -38,7 +39,7 @@ import Paths_testbench (version)
 
 data RunTestBench = Version
                   | List
-                  | Weigh !Int
+                  | Weigh !Int !FilePath
                   | Run { runTests :: !Bool
                         , runBench :: !Bool
                         , benchCfg :: !Config
@@ -56,7 +57,8 @@ parseWith cfg =
       runParse
   <|> Version <$  switch (long "version" <> short 'V' <> help "Show version information")
   <|> List    <$  switch (long "list" <> short 'l' <> help "List all benchmarks")
-  <|> Weigh   <$> option auto (long weighArg <> internal) -- Hidden option!
+  <|> Weigh   <$> option auto (long weighIndexArg <> internal) -- Hidden options!
+              <*> strOption (long weighFileArg <> internal)
   where
     runParse = Run <$> (not <$> switch (long "no-tests" <> help "Don't run tests"))
                    <*> (not <$> switch (long "no-bench" <> help "Don't run benchmarks"))
@@ -121,5 +123,8 @@ regressParams = do
   let ret = (words . map repl . drop 1 $ ps, tidy r)
   either readerError (const (return ret)) $ uncurry validateAccessors ret
 
-weighArg :: String
-weighArg = "only-weigh-this-index"
+weighIndexArg :: String
+weighIndexArg = "only-weigh-this-index"
+
+weighFileArg :: String
+weighFileArg = "write-weigh-results-to"
