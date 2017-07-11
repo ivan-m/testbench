@@ -42,27 +42,9 @@ module TestBench
     TestBench
   , testBench
   , testBenchWith
-    -- ** Running manually
-  , getTestBenches
-  , Eval(..)
-  , EvalTree
-  , EvalForest
-  , flattenBenchForest
-  , evalForest
-    -- ** Lower-level types
-  , TestBenchM
-  , OpTree
-  , Operation
-  , LabelTree(..)
-  , Depth
 
     -- * Grouping
   , collection
-
-    -- * Direct benchmarks\/tests
-  , nfEq
-  , whnfEq
-  , mkTestBench
 
     -- * Comparisons
   , compareFunc
@@ -106,6 +88,27 @@ module TestBench
 
     -- ** Lower-level types
   , ComparisonM
+
+    -- * Manual construction of a TestBench
+  , getTestBenches
+  , Eval(..)
+  , EvalTree
+  , EvalForest
+  , flattenBenchForest
+  , evalForest
+
+    -- ** Direct benchmarks\/tests
+  , nfEq
+  , whnfEq
+  , mkTestBench
+
+    -- ** Lower-level types
+  , TestBenchM
+  , OpTree
+  , Operation
+  , LabelTree(..)
+  , Depth
+
   ) where
 
 import TestBench.Commands
