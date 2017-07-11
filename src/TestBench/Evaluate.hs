@@ -24,6 +24,8 @@ module TestBench.Evaluate
   , flattenBenchForest
     -- * Running benchmarks
   , evalForest
+    -- ** Weighing individual functions
+  , weighIndex
   ) where
 
 import TestBench.LabelTree
@@ -52,11 +54,11 @@ import qualified Streaming.Prelude            as S
 
 import Control.Applicative       (liftA2)
 import Control.DeepSeq           (NFData)
-import Control.Monad             (when, zipWithM_)
+import Control.Monad             (join, when, zipWithM_)
 import Control.Monad.Trans.Class (lift)
 import Data.Int                  (Int64)
 import Data.List                 (intercalate)
-import Data.Maybe                (isJust, mapMaybe)
+import Data.Maybe                (isJust, listToMaybe, mapMaybe)
 import Data.String               (IsString)
 import Text.Printf               (printf)
 
@@ -275,6 +277,16 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
 
     i = 0 -- We're ignoring this value anyway, so it should be OK to
           -- just set it.
+
+--------------------------------------------------------------------------------
+
+weighIndex :: EvalForest -> Int -> IO (Maybe Weight)
+weighIndex ef = fmap join . mapM (mapM runGetWeight . eWeigh) . index es
+  where
+    es = concatMap leaves ef
+
+index :: [a] -> Int -> Maybe a
+index as n = listToMaybe . drop (n-1) $ as
 
 --------------------------------------------------------------------------------
 

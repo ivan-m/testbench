@@ -39,3 +39,6 @@ mapMaybeTree f = go
 
 mapMaybeForest :: (a -> Maybe b) -> (Int -> String -> [b] -> b) -> [LabelTree a] -> [b]
 mapMaybeForest f br = mapMaybe (fmap (foldLTree br (flip const)) . mapMaybeTree f)
+
+leaves :: LabelTree a -> [a]
+leaves = foldLTree (\_ _ lss -> concat lss) (\_ l -> [l])

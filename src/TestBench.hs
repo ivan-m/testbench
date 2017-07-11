@@ -224,7 +224,10 @@ testBenchWith cfg tb = execParser (optionParser cfg) >>= go
       -- The Config value won't get used, so it's OK just to use the default here.
       evalForest cfg (stripEval bf)
       exitSuccess
-    go (Weigh ind) = putStrLn ("Weighing " ++ show ind)
+    go (Weigh ind) = do
+      bs <- toBenchmarks <$> runTestBench tb
+      w <- weighIndex bs ind
+      print w
     go Run{..} = do
       (tst, bf) <- getTestBenches tb
       testSucc <- if runTests
