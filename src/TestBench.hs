@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, FunctionalDependencies,
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies,
              GeneralizedNewtypeDeriving, MultiParamTypeClasses, RecordWildCards
              #-}
 
@@ -53,8 +53,10 @@ module TestBench
     -- ** List of input values
     -- $listbased
   , compareFuncList
+  , compareFuncListIO
   , compareFuncList'
   , compareFuncAll
+  , compareFuncAllIO
   , compareFuncAll'
 
     -- ** Comparison parameters
@@ -71,6 +73,7 @@ module TestBench
 
     -- *** Control testing
   , baseline
+  , baselineIO
   , testWith
   , noTests
 
@@ -121,9 +124,10 @@ import Criterion.Types (Config)
 import Test.HUnit.Base (Assertion, Counts(..), Test(..), (@=?), (~:))
 import Test.HUnit.Text (runTestTT)
 
+import Control.Applicative             (liftA2)
 import Control.Arrow                   ((&&&))
 import Control.DeepSeq                 (NFData(..))
-import Control.Monad                   (when)
+import Control.Monad                   (join, when)
 import Control.Monad.IO.Class          (MonadIO(liftIO))
 import Control.Monad.Trans.Class       (lift)
 import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
@@ -391,10 +395,22 @@ Furthermore, you can now be sure that you won't forget a case!
 compareFuncList :: (ProvideParams params a b, Show a, Eq b, Show b)
                    => String -> (a -> b) -> params
                    -> [a] -> TestBench
-compareFuncList lbl f params lst =
+compareFuncList = compareFuncListWith baseline
+
+-- | A variant of 'compareFuncList' that allows for the function to
+--   return an 'IO' value.
+compareFuncListIO :: (ProvideParams params a (IO b), Show a, Eq b, Show b)
+                     => String -> (a -> IO b) -> params
+                     -> [a] -> TestBench
+compareFuncListIO = compareFuncListWith baselineIO
+
+compareFuncListWith :: (ProvideParams params a b, Show a)
+                       => (String -> a -> CompParams a b)
+                       -> String -> (a -> b) -> params -> [a] -> TestBench
+compareFuncListWith bline lbl f params lst =
   case lst of
     []     -> getDepth >>= \d -> singleTree (Branch d lbl [])
-    (a:as) -> compareFunc lbl f (baseline (show a) a `mappend` toParams params)
+    (a:as) -> compareFunc lbl f (bline (show a) a `mappend` toParams params)
                                 (mapM_ (comp =<< show) as)
 
 -- | A variant of 'compareFuncList' that doesn't use 'baseline'
@@ -409,6 +425,12 @@ compareFuncList' lbl f params = compareFunc lbl f params . mapM_ (comp =<< show)
 compareFuncAll :: (ProvideParams params a b, Show a, Enum a, Bounded a
                   , Eq b, Show b) => String -> (a -> b) -> params -> TestBench
 compareFuncAll lbl f params = compareFuncList lbl f params [minBound..maxBound]
+
+-- | An extension to 'compareFuncListIO' that uses the 'Bounded' and
+--   'Enum' instances to generate the list of all values.
+compareFuncAllIO :: (ProvideParams params a (IO b), Show a, Enum a, Bounded a
+                    , Eq b, Show b) => String -> (a -> IO b) -> params -> TestBench
+compareFuncAllIO lbl f params = compareFuncListIO lbl f params [minBound..maxBound]
 
 -- | A variant of 'comapreFuncAll' that doesn't use 'baseline'
 --   (allowing you to specify your own test).
@@ -507,9 +529,16 @@ noTests = mkOpsFrom (\ci -> ci { toTest = const Nothing })
 --   You shouldn't specify this more than once, nor mix it with
 --   'noTests' or 'testWith'.
 baseline :: (Eq b, Show b) => String -> a -> CompParams a b
-baseline nm arg = mempty { withOps = addOp
-                         , mkOps   = Endo setTest
-                         }
+baseline = baselineWith (@=?)
+
+-- | A variant of 'baseline' where the function returns an 'IO' value.
+baselineIO :: (Eq b, Show b) => String -> a -> CompParams a (IO b)
+baselineIO = baselineWith (join .: liftA2 (@=?))
+
+baselineWith :: (b -> b -> Assertion) -> String -> a -> CompParams a b
+baselineWith mkAssert nm arg = mempty { withOps = addOp
+                                      , mkOps   = Endo setTest
+                                      }
   where
     opFrom ci = Op { opName  = nm
                    , opBench = toBench ci (func ci) arg
@@ -519,7 +548,7 @@ baseline nm arg = mempty { withOps = addOp
 
     addOp ci = Endo (opFrom ci:)
 
-    setTest ci = ci { toTest = Just . (func ci arg @=?) }
+    setTest ci = ci { toTest = Just . mkAssert (func ci arg) }
 
 -- | Specify a predicate that all results should satisfy.
 --
