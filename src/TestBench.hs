@@ -75,6 +75,7 @@ module TestBench
     -- ** Comparison parameters
   , CompParams
   , normalForm
+  , normalFormIO
     -- *** Control benchmarking
   , benchNormalForm
   , benchIO
@@ -88,9 +89,11 @@ module TestBench
   , noTests
 
     -- *** Control function weighing
+  , weigh
+  , weighIO
   , GetWeight
   , getWeight
-  , weigh
+  , getWeightIO
 
     -- ** Specify comparisons
   , Comparison
@@ -460,6 +463,10 @@ benchNormalForm = withBenchMode nf
 normalForm :: (NFData b) => CompParams a b
 normalForm = benchNormalForm `mappend` weigh
 
+-- | A variant of 'normalForm' where the results are within @IO@.
+normalFormIO :: (NFData b) => CompParams a (IO b)
+normalFormIO = benchNormalFormIO `mappend` weighIO
+
 -- | Evaluate all IO-based benchmarks to weak head normal form.
 benchIO :: CompParams a (IO b)
 benchIO = withBenchMode (whnfIO .)
@@ -528,6 +535,10 @@ testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 --   If this flag is not provided, then this is equivalent to a no-op.
 weigh :: (NFData b) => CompParams a b
 weigh = mkOpsFrom (\ci -> ci { toWeigh = Just .: getWeight })
+
+-- | An IO-based equivalent to 'weigh'
+weighIO :: (NFData b) => CompParams a (IO b)
+weighIO = mkOpsFrom (\ci -> ci { toWeigh = Just .: getWeightIO })
 
 data CompInfo a b = CI { func    :: a -> b
                        , toBench :: (a -> b) -> a -> Maybe Benchmarkable

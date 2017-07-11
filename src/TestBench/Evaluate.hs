@@ -20,6 +20,7 @@ module TestBench.Evaluate
     -- ** Weights
   , GetWeight
   , getWeight
+  , getWeightIO
     -- * Conversion
   , flattenBenchTree
   , flattenBenchForest
@@ -41,7 +42,7 @@ import Criterion.Types                 (Benchmark, Benchmarkable, Config(..),
                                         DataRecord(..), Report(..),
                                         Verbosity(..), bench, bgroup)
 import Statistics.Resampling.Bootstrap (Estimate(..))
-import Weigh                           (weighFunc)
+import Weigh                           (weighAction, weighFunc)
 
 import Data.Csv (DefaultOrdered(..), Field, Name, ToField, ToNamedRecord(..),
                  ToRecord(..), header, namedRecord, record, toField)
@@ -85,10 +86,15 @@ data Eval = Eval { eName  :: !String
 
 -- | The results from measuring memory usage.
 data GetWeight where
-  GetWeight :: forall a b. (NFData b) => (a -> b) -> a -> GetWeight
+  GetWeight   :: forall a b. (NFData b) => (a -> b)    -> a -> GetWeight
+  GetWeightIO :: forall a b. (NFData b) => (a -> IO b) -> a -> GetWeight
 
 runGetWeight :: GetWeight -> IO Weight
-runGetWeight (GetWeight f a) = (\(b,gc,_,_) -> Weight b gc) <$> weighFunc f a
+runGetWeight gw = mkWeight <$> case gw of
+                                 GetWeight   f a -> weighFunc   f a
+                                 GetWeightIO f a -> weighAction f a
+  where
+    mkWeight (b,gc,_,_) = Weight b gc
 
 data Weight = Weight { bytesAlloc :: !Int64
                      , numGC      :: !Int64
@@ -97,6 +103,9 @@ data Weight = Weight { bytesAlloc :: !Int64
 
 getWeight :: (NFData b) => (a -> b) -> a -> GetWeight
 getWeight = GetWeight
+
+getWeightIO :: (NFData b) => (a -> IO b) -> a -> GetWeight
+getWeightIO = GetWeightIO
 
 flattenBenchTree :: EvalTree -> Maybe Benchmark
 flattenBenchTree = fmap (foldLTree (const bgroup) (flip const))
