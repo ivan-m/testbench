@@ -1,7 +1,6 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances,
-             FunctionalDependencies, GeneralizedNewtypeDeriving,
-             MultiParamTypeClasses, RankNTypes, RecordWildCards,
-             ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, FunctionalDependencies,
+             GeneralizedNewtypeDeriving, MultiParamTypeClasses, RecordWildCards
+             #-}
 
 {- |
    Module      : TestBench
@@ -265,7 +264,7 @@ mkTestBench toB w checkRes fn nm arg = do d <- getDepth
 --
 --   * No tests are performed by default; use either 'baseline' or
 --     'testWith' to specify one.
-compareFunc :: forall params a b. (ProvideParams params a b)
+compareFunc :: (ProvideParams params a b)
                => String -> (a -> b) -> params
                -> Comparison a b -> TestBench
 compareFunc lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
@@ -273,7 +272,6 @@ compareFunc lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
                                    let opTr = map (Leaf (d+1)) (withOps' ops)
                                    singleTree (Branch d lbl opTr)
   where
-    ci0 :: CompInfo a b
     ci0 = CI { func    = f
              , toBench = Just .: whnf
              , toWeigh = const (const Nothing)
@@ -295,8 +293,7 @@ compareFunc lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
 --
 --   'baseline' is used on the first value (if non-empty); the 'Show'
 --   instance is used to provide labels.
-compareFuncList :: forall params a b.
-                   (ProvideParams params a b, Show a, Eq b, Show b)
+compareFuncList :: (ProvideParams params a b, Show a, Eq b, Show b)
                    => String -> (a -> b) -> params
                    -> [a] -> TestBench
 compareFuncList lbl f params lst =
@@ -307,23 +304,20 @@ compareFuncList lbl f params lst =
 
 -- | A variant of 'compareFuncList' that doesn't use 'baseline'
 --   (allowing you to specify your own test).
-compareFuncList' :: forall params a b.
-                    (ProvideParams params a b, Show a)
+compareFuncList' :: (ProvideParams params a b, Show a)
                     => String -> (a -> b) -> params
                     -> [a] -> TestBench
 compareFuncList' lbl f params = compareFunc lbl f params . mapM_ (comp =<< show)
 
 -- | An extension to 'compareFuncList' that uses the 'Bounded' and
 --   'Enum' instances to generate the list of all values.
-compareFuncAll :: forall params a b.
-                  (ProvideParams params a b, Show a, Enum a, Bounded a
+compareFuncAll :: (ProvideParams params a b, Show a, Enum a, Bounded a
                   , Eq b, Show b) => String -> (a -> b) -> params -> TestBench
 compareFuncAll lbl f params = compareFuncList lbl f params [minBound..maxBound]
 
 -- | A variant of 'comapreFuncAll' that doesn't use 'baseline'
 --   (allowing you to specify your own test).
-compareFuncAll' :: forall params a b.
-                   (ProvideParams params a b, Show a, Enum a, Bounded a)
+compareFuncAll' :: (ProvideParams params a b, Show a, Enum a, Bounded a)
                    => String -> (a -> b) -> params -> TestBench
 compareFuncAll' lbl f params = compareFuncList' lbl f params [minBound..maxBound]
 
