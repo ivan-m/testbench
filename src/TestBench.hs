@@ -70,9 +70,6 @@ module TestBench
   , compareFuncAll
   , compareFuncAll'
 
-    -- ** Specifying constraints
-  , CUnion
-
     -- ** Comparison parameters
   , CompParams
   , normalForm
@@ -101,11 +98,9 @@ module TestBench
 
     -- ** Lower-level types
   , ComparisonM
-  , SameAs
   ) where
 
 import TestBench.Commands
-import TestBench.Constraints
 import TestBench.Evaluate
 import TestBench.LabelTree
 
