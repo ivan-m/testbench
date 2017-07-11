@@ -198,8 +198,8 @@ testBenchWith cfg tb = do
   case args of
     Version      -> putStrLn versionInfo >> exitSuccess
     List         -> evalForest testBenchConfig (stripEval bf) >> exitSuccess
-                    -- ^ Can't use the provided config in case it
-                    --   dictates CSV output.
+                    -- Can't use the provided config in case it
+                    -- dictates CSV output.
     Weigh ind fp -> weighIndex bf ind >>= writeFile fp . show
     Run {..}     -> do
       testSucc <- if runTests
