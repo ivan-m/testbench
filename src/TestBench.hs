@@ -174,13 +174,13 @@ withName jn mf op = jn (opName op) <$> mf op
 
 -- TODO: does this /really/ need to be in IO?
 newtype TestBenchM r
-  = TestBenchM { getOpTrees :: ReaderT Int (WriterT [OpTree] IO) r }
+  = TestBenchM { getOpTrees :: ReaderT Depth (WriterT [OpTree] IO) r }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | An environment for combining testing and benchmarking.
 type TestBench = TestBenchM ()
 
-runTestBenchDepth :: Int -> TestBench -> IO [OpTree]
+runTestBenchDepth :: Depth -> TestBench -> IO [OpTree]
 runTestBenchDepth d = execWriterT . (`runReaderT` d) . getOpTrees
 
 -- | Label a sub-part of a @TestBench@.
@@ -195,7 +195,7 @@ treeList = TestBenchM . lift . tell
 singleTree :: OpTree -> TestBench
 singleTree = treeList . (:[])
 
-getDepth :: TestBenchM Int
+getDepth :: TestBenchM Depth
 getDepth = TestBenchM ask
 
 runTestBench :: TestBench -> IO [OpTree]

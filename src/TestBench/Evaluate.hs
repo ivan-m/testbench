@@ -167,8 +167,6 @@ data EvalConfig = EC { benchConfig :: {-# UNPACK #-}!Config
 
 type PathList = DL.DList String
 
-type Depth = Int
-
 data Row = Row { rowLabel  :: !String
                , rowPath   :: !PathList -- ^ Invariant: length == rowDepth
                , rowDepth  :: {-# UNPACK #-} !Depth

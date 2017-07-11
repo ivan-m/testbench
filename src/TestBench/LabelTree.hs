@@ -16,12 +16,14 @@ import Data.Maybe (mapMaybe)
 
 --------------------------------------------------------------------------------
 
+type Depth = Int
+
 -- | A simple labelled rose-tree data structure also containing the depth.
-data LabelTree a = Leaf !Int a
-                 | Branch !Int String [LabelTree a]
+data LabelTree a = Leaf !Depth a
+                 | Branch !Depth String [LabelTree a]
   deriving (Eq, Ord, Show, Read, Functor)
 
-foldLTree :: (Int -> String -> [a] -> a) -> (Int -> b -> a) -> LabelTree b -> a
+foldLTree :: (Depth -> String -> [a] -> a) -> (Depth -> b -> a) -> LabelTree b -> a
 foldLTree br lf = go
   where
     go tr = case tr of
@@ -37,7 +39,7 @@ mapMaybeTree f = go
                                   []   -> Nothing
                                   trs' -> Just (Branch d l trs')
 
-mapMaybeForest :: (a -> Maybe b) -> (Int -> String -> [b] -> b) -> [LabelTree a] -> [b]
+mapMaybeForest :: (a -> Maybe b) -> (Depth -> String -> [b] -> b) -> [LabelTree a] -> [b]
 mapMaybeForest f br = mapMaybe (fmap (foldLTree br (flip const)) . mapMaybeTree f)
 
 leaves :: LabelTree a -> [a]
