@@ -85,7 +85,6 @@ module TestBench
   , compareFuncList'
   , compareFuncAll
   , compareFuncAll'
-  , compareFuncConstraint
 
     -- ** Specifying constraints
   , CUnion
@@ -140,7 +139,6 @@ import Control.Monad.Trans.Reader      (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer.Lazy (WriterT, execWriterT, tell)
 import Data.Maybe                      (mapMaybe)
 import Data.Monoid                     (Endo(..))
-import Data.Proxy                      (Proxy(..))
 import Options.Applicative             (execParser)
 import System.Exit                     (exitSuccess)
 
@@ -290,7 +288,23 @@ mkTestBench toB w checkRes fn nm arg = do d <- getDepth
 compareFunc :: forall params a b. (ProvideParams params (SameAs a) b)
                => String -> (a -> b) -> params
                -> Comparison (SameAs a) b -> TestBench
-compareFunc = compareFuncConstraint (Proxy :: Proxy (SameAs a))
+compareFunc lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
+                                   d   <- getDepth
+                                   let opTr = map (Leaf (d+1)) (withOps' ops)
+                                   singleTree (Branch d lbl opTr)
+  where
+    ci0 :: CompInfo (SameAs a) b
+    ci0 = CI { func    = f
+             , toBench = Just .: whnf
+             , toWeigh = const (const Nothing)
+             , toTest  = const Nothing
+             }
+
+    params' = toParams params
+
+    ci = appEndo (mkOps params') ci0
+
+    withOps' = appEndo (withOps params' ci)
 
 -- | As with 'compareFunc' but use the provided list of values to base
 --   the benchmarking off of.
@@ -332,29 +346,6 @@ compareFuncAll' :: forall params a b.
                    (ProvideParams params (SameAs a) b, Show a, Enum a, Bounded a)
                    => String -> (a -> b) -> params -> TestBench
 compareFuncAll' lbl f params = compareFuncList' lbl f params [minBound..maxBound]
-
--- | As with 'compareFunc' but allow for polymorphic inputs by
---   specifying the constraint to be used.
-compareFuncConstraint :: forall params ca b. (ProvideParams params ca b)
-                         => Proxy ca -> String -> (forall a. (ca a) => a -> b)
-                         -> params -> Comparison ca b -> TestBench
-compareFuncConstraint _ lbl f params cmpM = do ops <- liftIO (runComparison ci cmpM)
-                                               d   <- getDepth
-                                               let opTr = map (Leaf (d+1)) (withOps' ops)
-                                               singleTree (Branch d lbl opTr)
-  where
-    ci0 :: CompInfo ca b
-    ci0 = CI { func    = f
-             , toBench = Just .: whnf
-             , toWeigh = const (const Nothing)
-             , toTest  = const Nothing
-             }
-
-    params' = toParams params
-
-    ci = appEndo (mkOps params') ci0
-
-    withOps' = appEndo (withOps params' ci)
 
 -- TODO: work out how to fix it if multiple test setting functions are called; might need a Last in here.
 -- | Monoidally build up the parameters used to control a 'Comparison'

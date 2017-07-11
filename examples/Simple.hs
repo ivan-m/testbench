@@ -39,14 +39,6 @@ main = testBench $ do
               (testWith (@? "Not as long as specified") <> benchNormalForm)
               (mapM_ (\n -> comp ("len == " ++ show n) n) [1..5])
 
-  compareFuncConstraint (Proxy :: Proxy Sequential)
-                        "Length of linear types"
-                        len
-                        [baseline "Lists" sampleList, normalForm]
-                        $ do comp "sequence" (Seq.fromList sampleList)
-                             comp "strict bytestring" (SB.pack sampleList)
-                             comp "lazy bytestring" (LB.pack sampleList)
-
   compareFuncAll "Packing and length"
                  (`chooseType` listLength)
                  normalForm
