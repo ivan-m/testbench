@@ -18,6 +18,7 @@ module TestBench.Commands
   , versionInfo
   , parseWith
   , configParser
+  , weighArg
   ) where
 
 import Criterion.Analysis     (validateAccessors)
@@ -37,6 +38,7 @@ import Paths_testbench (version)
 
 data RunTestBench = Version
                   | List
+                  | Weigh !Int
                   | Run { runTests :: !Bool
                         , runBench :: !Bool
                         , benchCfg :: !Config
@@ -52,8 +54,9 @@ optionParser cfg = info (helper <*> parseWith cfg) $
 parseWith :: Config -> Parser RunTestBench
 parseWith cfg =
       runParse
-  <|> Version <$ switch (long "version" <> short 'V' <> help "Show version information")
-  <|> List    <$ switch (long "list" <> short 'l' <> help "List all benchmarks")
+  <|> Version <$  switch (long "version" <> short 'V' <> help "Show version information")
+  <|> List    <$  switch (long "list" <> short 'l' <> help "List all benchmarks")
+  <|> Weigh   <$> option auto (long weighArg <> internal) -- Hidden option!
   where
     runParse = Run <$> (not <$> switch (long "no-tests" <> help "Don't run tests"))
                    <*> (not <$> switch (long "no-bench" <> help "Don't run benchmarks"))
@@ -117,3 +120,6 @@ regressParams = do
     readerError "no predictors specified"
   let ret = (words . map repl . drop 1 $ ps, tidy r)
   either readerError (const (return ret)) $ uncurry validateAccessors ret
+
+weighArg :: String
+weighArg = "only-weigh-this-index"
