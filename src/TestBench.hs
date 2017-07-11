@@ -198,8 +198,9 @@ testBenchWith cfg tb = do
   args <- execParser (optionParser cfg)
   case args of
     Version      -> putStrLn versionInfo >> exitSuccess
-    List         -> evalForest cfg (stripEval bf) >> exitSuccess
-                    -- ^ The Config value won't get used, so it's OK just to use the default here.
+    List         -> evalForest testBenchConfig (stripEval bf) >> exitSuccess
+                    -- ^ Can't use the provided config in case it
+                    --   dictates CSV output.
     Weigh ind fp -> weighIndex bf ind >>= writeFile fp . show
     Run {..}     -> do
       testSucc <- if runTests
