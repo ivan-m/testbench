@@ -216,26 +216,21 @@ testBench = testBenchWith testBenchConfig
 -- | As with 'testBench' but allow specifying a custom default
 --   'Config' parameter rather than 'testBenchConfig'.
 testBenchWith :: Config -> TestBench -> IO ()
-testBenchWith cfg tb = execParser (optionParser cfg) >>= go
-  where
-    go Version = putStrLn versionInfo >> exitSuccess
-    go List    = do
-      (_, bf) <- getTestBenches tb
-      -- The Config value won't get used, so it's OK just to use the default here.
-      evalForest cfg (stripEval bf)
-      exitSuccess
-    go (Weigh ind) = do
-      bs <- toBenchmarks <$> runTestBench tb
-      w <- weighIndex bs ind
-      print w
-    go Run{..} = do
-      (tst, bf) <- getTestBenches tb
+testBenchWith cfg tb = do
+  (tst, bf) <- getTestBenches tb
+  args <- execParser (optionParser cfg)
+  case args of
+    Version   -> putStrLn versionInfo >> exitSuccess
+    List      -> evalForest cfg (stripEval bf) >> exitSuccess
+                 -- ^ The Config value won't get used, so it's OK just to use the default here.
+    Weigh ind -> weighIndex bf ind >>= print
+    Run {..}  -> do
       testSucc <- if runTests
                      then do tcnts <- runTestTT tst
                              return (errors tcnts == 0 && failures tcnts == 0)
                      else return True
       when (runBench && testSucc) (evalForest benchCfg bf)
-
+  where
     -- To print out the list of benchmarks, we abuse the current
     -- tabular setup for printing results by just disabling all
     -- benchmarks, etc.
