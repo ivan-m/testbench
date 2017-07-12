@@ -48,9 +48,6 @@ Limitations
       the detailed outputs produced by _criterion_ don't lend
       themselves well to comparisons.
 
-    - No CSV output for saving results.  This should be easier to add
-      in if required but currently isn't available.
-
 Fortuitously Anticipated Queries
 --------------------------------
 
