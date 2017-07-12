@@ -26,14 +26,19 @@ import Criterion.Analysis     (validateAccessors)
 import Criterion.Main.Options (defaultConfig)
 import Criterion.Types        (Config(..), Verbosity(Quiet))
 
-import Options.Applicative
-import Options.Applicative.Types (readerAsk)
+import Options.Applicative.Builder (auto, footer, fullDesc, header, help, info,
+                                    internal, long, metavar, option,
+                                    readerError, short, strOption, switch,
+                                    value)
+import Options.Applicative.Extra   (helper)
+import Options.Applicative.Types   (Parser, ParserInfo, ReadM, readerAsk)
 
-import Control.Monad   (when)
-import Data.Char       (isSpace)
-import Data.Monoid     ((<>))
-import Data.Version    (showVersion)
-import Paths_testbench (version)
+import Control.Applicative (many, optional, (<|>))
+import Control.Monad       (when)
+import Data.Char           (isSpace)
+import Data.Monoid         ((<>))
+import Data.Version        (showVersion)
+import Paths_testbench     (version)
 
 --------------------------------------------------------------------------------
 

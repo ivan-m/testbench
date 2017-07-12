@@ -123,7 +123,8 @@ import TestBench.LabelTree
 
 import Criterion       (Benchmarkable, nf, nfIO, whnf, whnfIO)
 import Criterion.Types (Config)
-import Test.HUnit.Base (Assertion, Counts(..), Test(..), (@=?), (~:))
+import Test.HUnit.Base (Assertion, Counts(errors, failures), Test(TestList),
+                        (@=?), (~:))
 import Test.HUnit.Text (runTestTT)
 
 import Control.Arrow                   ((&&&))

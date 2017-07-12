@@ -51,16 +51,16 @@ library
                      , cassava == 0.5.*
                      , criterion >= 1.1.4.0 && < 1.2
                      , dlist == 0.8.*
-                     , deepseq
-                     , HUnit
-                     , optparse-applicative
-                     , process
+                     , deepseq >= 1.1.0.0 && < 1.5
+                     , HUnit >= 1.1 && < 1.7
+                     , optparse-applicative >= 0.11.0.0 && < 0.15
+                     , process >= 1.1.0.0 && < 1.7
                      , resourcet
                      , statistics
                      , streaming == 0.1.*
                      , streaming-bytestring == 0.1.*
                      , streaming-cassava == 0.1.*
-                     , temporary
+                     , temporary >= 1.1 && < 1.3
                      , transformers
                      , weigh >= 0.0.4 && < 0.1
   hs-source-dirs:      src
