@@ -49,14 +49,14 @@ library
   build-depends:       base >=4.7 && <4.11
                      , bytestring
                      , cassava == 0.5.*
-                     , criterion >= 1.1.4.0 && < 1.2
+                     , criterion >= 1.2.1.0 && < 1.3
                      , dlist == 0.8.*
                      , deepseq >= 1.1.0.0 && < 1.5
                      , HUnit >= 1.1 && < 1.7
                      , optparse-applicative >= 0.11.0.0 && < 0.15
                      , process >= 1.1.0.0 && < 1.7
                      , resourcet
-                     , statistics
+                     , statistics == 0.14.*
                      , streaming == 0.1.*
                      , streaming-bytestring == 0.1.*
                      , streaming-cassava == 0.1.*

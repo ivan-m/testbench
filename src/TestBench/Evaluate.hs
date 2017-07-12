@@ -30,19 +30,17 @@ module TestBench.Evaluate
   , weighIndex
   ) where
 
-import TestBench.Commands  (weighFileArg, weighIndexArg)
+import TestBench.Commands  (resetUnusedConfig, weighFileArg, weighIndexArg)
 import TestBench.LabelTree
 
-import Criterion.Analysis              (OutlierVariance(ovFraction),
-                                        SampleAnalysis(..))
-import Criterion.Internal              (runAndAnalyseOne)
-import Criterion.Measurement           (initializeTime, secs)
-import Criterion.Monad                 (withConfig)
-import Criterion.Types                 (Benchmark, Benchmarkable, Config(..),
-                                        DataRecord(..), Report(..),
-                                        Verbosity(..), bench, bgroup)
-import Statistics.Resampling.Bootstrap (Estimate(..))
-import Weigh                           (weighAction, weighFunc)
+import Criterion.Analysis    (OutlierVariance(ovFraction), SampleAnalysis(..))
+import Criterion.Internal    (runAndAnalyseOne)
+import Criterion.Measurement (initializeTime, secs)
+import Criterion.Monad       (withConfig)
+import Criterion.Types       (Benchmark, Benchmarkable, Config(..),
+                              DataRecord(..), Report(..), bench, bgroup)
+import Statistics.Types      (ConfInt(..), Estimate(..))
+import Weigh                 (weighAction, weighFunc)
 
 import Data.Csv (DefaultOrdered(..), Field, Name, ToField, ToNamedRecord(..),
                  ToRecord(..), header, namedRecord, record, toField)
@@ -279,8 +277,8 @@ makeRow cfg pl idx d e = Row lbl pl d True
          then maybe (return Nothing) r (f e)
          else return Nothing
 
-data BenchResults = BenchResults { resMean   :: !Estimate
-                                 , resStdDev :: !Estimate
+data BenchResults = BenchResults { resMean   :: !(Estimate ConfInt Double)
+                                 , resStdDev :: !(Estimate ConfInt Double)
                                  , resOutVar :: !OutlierVariance
                                  }
   deriving (Eq, Show, Read)
@@ -302,7 +300,7 @@ getBenchResults cfg lbl b = do dr <- withConfig cfg' (runAndAnalyseOne i lbl b)
     --
     -- Also, just in case a CSV file is being outputted, don't try and
     -- write to it.
-    cfg' = cfg { verbosity = Quiet, csvFile = Nothing }
+    cfg' = resetUnusedConfig cfg { csvFile = Nothing }
 
     i = 0 -- We're ignoring this value anyway, so it should be OK to
           -- just set it.
@@ -405,6 +403,12 @@ printBench mr = zipWithM_ (printf "%s%*s" columnSpace) wdths cols
     ov r = percent (ovFraction (resOutVar r))
 
     wdths = map fst benchHeaders
+
+estLowerBound :: (Num a) => Estimate ConfInt a -> a
+estLowerBound e = estPoint e - confIntLDX (estError e)
+
+estUpperBound :: (Num a) => Estimate ConfInt a -> a
+estUpperBound e = estPoint e + confIntUDX (estError e)
 
 printWeigh :: Maybe Weight -> IO ()
 printWeigh mr = zipWithM_ (printf "%s%*s" columnSpace) wdths cols
