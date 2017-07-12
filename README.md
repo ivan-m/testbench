@@ -76,6 +76,19 @@ what you are benchmarking and how, then using `comp` just to specify
 the input (without needing to also re-specify the function,
 evaluationg type, etc.).
 
+### Do I need to know HUnit or criterion to be able to use this?
+
+No, for basic/default usage this library handles all that for you.
+
+There are two overall hints for good benchmarks though:
+
+* Use the `NFData` variants (e.g. `normalForm`) where possible: this
+  ensures the calculation is actually completed rather than laziness
+  biting you.
+
+* If the variance is high, make the benchmark do more work to decrease
+  it.
+
 ### Why not use hspec/tasty/some-other-testing-framework?
 
 Hopefully by the nature of this question it is obvious why I did not
