@@ -207,6 +207,8 @@ testBench = testBenchWith testBenchConfig
 
 -- | As with 'testBench' but allow specifying a custom default
 --   'Config' parameter rather than 'testBenchConfig'.
+--
+--  @since 0.2.0.0
 testBenchWith :: Config -> TestBench -> IO ()
 testBenchWith cfg tb = do
   (tst, bf) <- getTestBenches tb
@@ -391,6 +393,8 @@ Furthermore, you can now be sure that you won't forget a case!
 --
 --   'baseline' is used on the first value (if non-empty); the 'Show'
 --   instance is used to provide labels.
+--
+--   @since 0.2.0.0
 compareFuncList :: (ProvideParams params a b, Show a, Eq b, Show b)
                    => String -> (a -> b) -> params
                    -> [a] -> TestBench
@@ -398,6 +402,8 @@ compareFuncList = compareFuncListWith baseline
 
 -- | A variant of 'compareFuncList' that allows for the function to
 --   return an 'IO' value.
+--
+--   @since 0.2.0.0
 compareFuncListIO :: (ProvideParams params a (IO b), Show a, Eq b, Show b)
                      => String -> (a -> IO b) -> params
                      -> [a] -> TestBench
@@ -414,6 +420,8 @@ compareFuncListWith bline lbl f params lst =
 
 -- | A variant of 'compareFuncList' that doesn't use 'baseline'
 --   (allowing you to specify your own test).
+--
+--   @since 0.2.0.0
 compareFuncList' :: (ProvideParams params a b, Show a)
                     => String -> (a -> b) -> params
                     -> [a] -> TestBench
@@ -421,18 +429,24 @@ compareFuncList' lbl f params = compareFunc lbl f params . mapM_ (comp =<< show)
 
 -- | An extension to 'compareFuncList' that uses the 'Bounded' and
 --   'Enum' instances to generate the list of all values.
+--
+--   @since 0.2.0.0
 compareFuncAll :: (ProvideParams params a b, Show a, Enum a, Bounded a
                   , Eq b, Show b) => String -> (a -> b) -> params -> TestBench
 compareFuncAll lbl f params = compareFuncList lbl f params [minBound..maxBound]
 
 -- | An extension to 'compareFuncListIO' that uses the 'Bounded' and
 --   'Enum' instances to generate the list of all values.
+--
+--   @since 0.2.0.0
 compareFuncAllIO :: (ProvideParams params a (IO b), Show a, Enum a, Bounded a
                     , Eq b, Show b) => String -> (a -> IO b) -> params -> TestBench
 compareFuncAllIO lbl f params = compareFuncListIO lbl f params [minBound..maxBound]
 
 -- | A variant of 'comapreFuncAll' that doesn't use 'baseline'
 --   (allowing you to specify your own test).
+--
+--   @since 0.2.0.0
 compareFuncAll' :: (ProvideParams params a b, Show a, Enum a, Bounded a)
                    => String -> (a -> b) -> params -> TestBench
 compareFuncAll' lbl f params = compareFuncList' lbl f params [minBound..maxBound]
@@ -469,6 +483,8 @@ instance Monoid (CompParams a b) where
 --
 --   * Use the list instance and provide a list of 'CompParams'
 --     values.
+--
+--   @since 0.2.0.0
 class ProvideParams cp a b | cp -> a b where
   toParams :: cp -> CompParams a b
 
@@ -496,10 +512,14 @@ normalFormIO :: (NFData b) => CompParams a (IO b)
 normalFormIO = benchNormalFormIO `mappend` weighIO
 
 -- | Evaluate all IO-based benchmarks to weak head normal form.
+--
+--   @since 0.2.0.0
 benchIO :: CompParams a (IO b)
 benchIO = withBenchMode (whnfIO .)
 
 -- | Evaluate all IO-based benchmarks to normal form.
+--
+--   @since 0.2.0.0
 benchNormalFormIO :: (NFData b) => CompParams a (IO b)
 benchNormalFormIO = withBenchMode (nfIO .)
 
@@ -527,10 +547,14 @@ noTests = mkOpsFrom (\ci -> ci { toTest = const Nothing })
 --
 --   You shouldn't specify this more than once, nor mix it with
 --   'noTests' or 'testWith'.
+--
+--   @since 0.2.0.0
 baseline :: (Eq b, Show b) => String -> a -> CompParams a b
 baseline = baselineWith (@=?)
 
 -- | A variant of 'baseline' where the function returns an 'IO' value.
+--
+--   @since 0.2.0.0
 baselineIO :: (Eq b, Show b) => String -> a -> CompParams a (IO b)
 baselineIO = baselineWith (liftA2' (@=?))
   where
@@ -572,10 +596,14 @@ testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 --     your .cabal file.
 --
 --   If this flag is not provided, then this is equivalent to a no-op.
+--
+--   @since 0.2.0.0
 weigh :: (NFData b) => CompParams a b
 weigh = mkOpsFrom (\ci -> ci { toWeigh = Just .: getWeight })
 
 -- | An IO-based equivalent to 'weigh'
+--
+--   @since 0.2.0.0
 weighIO :: (NFData b) => CompParams a (IO b)
 weighIO = mkOpsFrom (\ci -> ci { toWeigh = Just .: getWeightIO })
 
@@ -604,13 +632,13 @@ runComparison cmpr cmpM = execWriterT  . runReaderT (runComparisonM cmpM) $ cmpr
 comp :: String -> a -> Comparison a b
 comp = compWith id
 
--- | Only benchmark (but do not test) this value against the specified
---   function.
+-- | Only benchmark and possibly weigh (but do not test) this value
+--   against the specified function.
 compBench :: String -> a -> Comparison a b
 compBench = compWith (\op -> op { opTest = Nothing })
 
--- | Only test (but do not benchmark) this value against the specified
---   function.
+-- | Only test (but do not benchmark or weigh) this value against the
+--   specified function.
 compTest :: String -> a -> Comparison a b
 compTest = compWith (\op -> op { opBench = Nothing, opWeigh = Nothing })
 

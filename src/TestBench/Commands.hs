@@ -69,6 +69,8 @@ versionInfo = "TestBench - " ++ showVersion version
 
 -- | This is the same as 'defaultConfig' from criterion but with the
 --   verbosity set to 'Quiet' to avoid unnecessary noise on stdout.
+--
+--   @since 0.2.0.0
 testBenchConfig :: Config
 testBenchConfig = defaultConfig { verbosity = Quiet }
 

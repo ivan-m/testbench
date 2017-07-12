@@ -85,6 +85,8 @@ data Eval = Eval { eName  :: !String
                  }
 
 -- | The results from measuring memory usage.
+--
+--   @since 0.2.0.0
 data GetWeight where
   GetWeight   :: forall a b. (NFData b) => (a -> b)    -> a -> GetWeight
   GetWeightIO :: forall a b. (NFData b) => (a -> IO b) -> a -> GetWeight
@@ -101,9 +103,15 @@ data Weight = Weight { bytesAlloc :: !Int64
                      }
             deriving (Eq, Ord, Show, Read)
 
+-- | How to weigh a function.
+--
+--   @since 0.2.0.0
 getWeight :: (NFData b) => (a -> b) -> a -> GetWeight
 getWeight = GetWeight
 
+-- | An IO-based variant of 'getWeight'.
+--
+--   @since 0.2.0.0
 getWeightIO :: (NFData b) => (a -> IO b) -> a -> GetWeight
 getWeightIO = GetWeightIO
 
