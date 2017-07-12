@@ -515,11 +515,13 @@ benchNormalForm = withBenchMode nf
 --   can - and should - be evaluated to normal form.
 --
 --   @since 0.2.0.0 normalForm :: (NFData b) => CompParams a b
+normalForm :: (NFData b) => CompParams a b
 normalForm = benchNormalForm `mappend` weigh
 
 -- | A variant of 'normalForm' where the results are within @IO@.
 --
 --   @since 0.2.0.0 normalFormIO :: (NFData b) => CompParams a (IO b)
+normalFormIO :: (NFData b) => CompParams a (IO b)
 normalFormIO = benchNormalFormIO `mappend` weighIO
 
 -- | Evaluate all IO-based benchmarks to weak head normal form.

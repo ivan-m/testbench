@@ -1,5 +1,11 @@
-0.2.0.0
-=======
+0.2.0.1 (12 July, 2017)
+=======================
+
+* Accidentally deleted the type signatures of `normalForm` and
+  `normalFormIO`, breaking compilation.
+
+0.2.0.0 (12 July, 2017)
+=======================
 
 * Benchmarking results are now printed out incrementally rather than
   requiring all of them to be completed first.
