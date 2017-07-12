@@ -13,7 +13,7 @@ Make it easier to compare benchmarks and to test that benchmarks are
 indeed valid.
 
 At the top level you will probably run the 'testBench' function, and
-create comparisons using 'compareFunc' or 'compareFuncConstraint'.
+create comparisons using 'compareFunc' or the list-based variants.
 
 For example:
 
