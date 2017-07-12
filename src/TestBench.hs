@@ -514,13 +514,13 @@ benchNormalForm = withBenchMode nf
 --   account the common case that you want to consider a value that
 --   can - and should - be evaluated to normal form.
 --
---   @since 0.2.0.0 normalForm :: (NFData b) => CompParams a b
+--   @since 0.2.0.0
 normalForm :: (NFData b) => CompParams a b
 normalForm = benchNormalForm `mappend` weigh
 
 -- | A variant of 'normalForm' where the results are within @IO@.
 --
---   @since 0.2.0.0 normalFormIO :: (NFData b) => CompParams a (IO b)
+--   @since 0.2.0.0
 normalFormIO :: (NFData b) => CompParams a (IO b)
 normalFormIO = benchNormalFormIO `mappend` weighIO
 
