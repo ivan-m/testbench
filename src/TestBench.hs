@@ -54,6 +54,7 @@ module TestBench
     -- $listbased
   , compareFuncList
   , compareFuncListIO
+  , compareFuncListWith
   , compareFuncList'
   , compareFuncAll
   , compareFuncAllIO
@@ -74,6 +75,7 @@ module TestBench
     -- *** Control testing
   , baseline
   , baselineIO
+  , baselineWith
   , testWith
   , noTests
 
@@ -409,6 +411,12 @@ compareFuncListIO :: (ProvideParams params a (IO b), Show a, Eq b, Show b)
                      -> [a] -> TestBench
 compareFuncListIO = compareFuncListWith baselineIO
 
+-- | A variant of 'compareFuncList' where you provide your own
+--   equivalent to 'baseline'.
+--
+--   Most useful with 'baselineWith'.
+--
+--   @since 0.2.0.0
 compareFuncListWith :: (ProvideParams params a b, Show a)
                        => (String -> a -> CompParams a b)
                        -> String -> (a -> b) -> params -> [a] -> TestBench
@@ -562,6 +570,10 @@ baselineIO = baselineWith (liftA2' (@=?))
                          b <- mb
                          f a b
 
+-- | A variant of 'baseline' that lets you specify how to test for
+--   equality.
+--
+--   @since 0.2.0.0
 baselineWith :: (b -> b -> Assertion) -> String -> a -> CompParams a b
 baselineWith mkAssert nm arg = mempty { withOps = addOp
                                       , mkOps   = Endo setTest
