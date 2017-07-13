@@ -3,6 +3,8 @@
 
 * Add `compareFuncAllWith`
 
+* Documentation improvements (especially on `baselineWith`).
+
 0.2.0.1 (12 July, 2017)
 =======================
 

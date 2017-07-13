@@ -588,6 +588,9 @@ baselineIO = baselineWith (liftA2' (@=?))
 -- | A variant of 'baseline' that lets you specify how to test for
 --   equality.
 --
+--   The first argument to the provided function will be the
+--   \"baseline\" value; the second will be the value being tested.
+--
 --   @since 0.2.0.0
 baselineWith :: (b -> b -> Assertion) -> String -> a -> CompParams a b
 baselineWith mkAssert nm arg = mempty { withOps = addOp
