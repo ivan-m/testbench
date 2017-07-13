@@ -58,6 +58,7 @@ module TestBench
   , compareFuncList'
   , compareFuncAll
   , compareFuncAllIO
+  , compareFuncAllWith
   , compareFuncAll'
 
     -- ** Comparison parameters
@@ -451,6 +452,15 @@ compareFuncAll lbl f params = compareFuncList lbl f params [minBound..maxBound]
 compareFuncAllIO :: (ProvideParams params a (IO b), Show a, Enum a, Bounded a
                     , Eq b, Show b) => String -> (a -> IO b) -> params -> TestBench
 compareFuncAllIO lbl f params = compareFuncListIO lbl f params [minBound..maxBound]
+
+-- | An extension to 'compareFuncListWith' that uses the 'Bounded' and
+--   'Enum' instances to generate the list of all values.
+--
+--   @since 0.2.1.0
+compareFuncAllWith :: (ProvideParams params a b, Show a, Enum a, Bounded a
+                      , Eq b, Show b) => (String -> a -> CompParams a b)
+                      -> String -> (a -> b) -> params -> TestBench
+compareFuncAllWith bline lbl f params = compareFuncListWith bline lbl f params [minBound..maxBound]
 
 -- | A variant of 'comapreFuncAll' that doesn't use 'baseline'
 --   (allowing you to specify your own test).
