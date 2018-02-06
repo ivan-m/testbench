@@ -57,7 +57,6 @@ import Control.Monad                    (join, when, zipWithM_)
 import Control.Monad.IO.Class           (liftIO)
 import Control.Monad.Trans.Class        (lift)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
-import Data.Functor                     (($>))
 import Data.Int                         (Int64)
 import Data.List                        (intercalate)
 import Data.Maybe                       (isJust, listToMaybe, mapMaybe)
@@ -132,12 +131,19 @@ evalForest :: Config -> EvalForest -> IO ()
 evalForest cfg ef = do when (hasBench ep) initializeTime
                        let ec = EC cfg ep
                        printHeaders ep
-                       (`evalStateT` zeroIndex) . maybeCSV . S.mapM printReturn $ toRows ec ef
+                       (`evalStateT` zeroIndex)
+                         . maybeCSV
+                         . S.mapM_ (liftIO . printRow ep)
+                         . S.copy
+                         $ toRows ec ef
   where
     ep = checkForest ef
 
-    printReturn r = liftIO (printRow ep r) $> r
-
+    -- Ideally we would do the S.copy here only if we're writing to
+    -- CSV; unfortunately, as we're not longer using ResourceT we
+    -- don't have a MonadMask instance and thus can't use another
+    -- Stream as the inner Monad; this /must/ be run after processing
+    -- the stdout version.
     maybeCSV = maybe S.effects streamCSV (csvFile cfg)
 
     -- In reality, this type signature contains StateT, but that
