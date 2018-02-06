@@ -1,3 +1,10 @@
+0.2.1.1 (6 February, 2018)
+==========================
+
+* Allow building with GHC 8.2.*
+
+* Now requires streaming-0.2.*
+
 0.2.1.0 (13 July, 2017)
 =======================
 

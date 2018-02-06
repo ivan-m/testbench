@@ -45,12 +45,11 @@ import Weigh                 (weighAction, weighFunc)
 import Data.Csv (DefaultOrdered(..), Field, Name, ToField, ToNamedRecord(..),
                  ToRecord(..), header, namedRecord, record, toField)
 
-import           Control.Monad.Trans.Resource (runResourceT)
-import qualified Data.ByteString.Streaming    as B
-import qualified Data.DList                   as DL
-import           Streaming                    (Of, Stream, hoist)
-import           Streaming.Cassava            (encodeByNameDefault)
-import qualified Streaming.Prelude            as S
+import qualified Data.DList        as DL
+import           Streaming         (Of, Stream)
+import           Streaming.Cassava (encodeByNameDefault)
+import qualified Streaming.Prelude as S
+import           Streaming.With    (writeBinaryFile)
 
 import Control.Applicative              (liftA2)
 import Control.DeepSeq                  (NFData)
@@ -147,9 +146,7 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
     -- MonadThrow.
 
     -- streamCSV :: FilePath -> Stream (Of Row) IO () -> IO ()
-    streamCSV fp = runResourceT
-                  . B.writeFile fp
-                  . hoist lift
+    streamCSV fp = writeBinaryFile fp
                   . encodeByNameDefault
                   . S.filter isLeaf
 
