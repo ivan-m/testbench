@@ -57,7 +57,7 @@ library
                      , process >= 1.1.0.0 && < 1.7
                      , resourcet
                      , statistics == 0.14.*
-                     , streaming == 0.1.*
+                     , streaming >= 0.1 && < 0.3
                      , streaming-bytestring == 0.1.*
                      , streaming-cassava == 0.1.*
                      , temporary >= 1.1 && < 1.3
