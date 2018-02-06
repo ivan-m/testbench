@@ -58,6 +58,7 @@ import Control.Monad                    (join, when, zipWithM_)
 import Control.Monad.IO.Class           (liftIO)
 import Control.Monad.Trans.Class        (lift)
 import Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
+import Data.Functor                     (($>))
 import Data.Int                         (Int64)
 import Data.List                        (intercalate)
 import Data.Maybe                       (isJust, listToMaybe, mapMaybe)
@@ -136,7 +137,7 @@ evalForest cfg ef = do when (hasBench ep) initializeTime
   where
     ep = checkForest ef
 
-    printReturn r = liftIO (printRow ep r) *> return r
+    printReturn r = liftIO (printRow ep r) $> r
 
     maybeCSV = maybe S.effects streamCSV (csvFile cfg)
 
