@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies,
-             GeneralizedNewtypeDeriving, MultiParamTypeClasses, RecordWildCards
-             #-}
+             GeneralizedNewtypeDeriving, MultiParamTypeClasses,
+             RecordWildCards #-}
 
 {- |
    Module      : TestBench
@@ -616,16 +616,12 @@ testWith f = mkOpsFrom (\ci -> ci { toTest = Just . f })
 
 -- | Calculate memory usage of the various parameters.
 --
---   This requires running your executable with the @-T@ RTS flag.  To
---   do so, you can either do:
---
---   * @my-program +RTS -T -RTS@ (may need to add @-rtsopts@ to your
---     @ghc-options@ in your .cabal file)
---
---   * Add @-rtsopts -with-rtsopts=-T@ to your `ghc-options` field in
---     your .cabal file.
---
---   If this flag is not provided, then this is equivalent to a no-op.
+--   Note that to achieve this, 'testBench' and associated functions
+--   will run copies of itself to be able to calculate memory usage in
+--   a pristine environment (i.e. without influence of caching from
+--   testing and benchmarking).  As such, you may wish to use the
+--   @-threaded@ GHC option when building your benchmarking
+--   executable.
 --
 --   @since 0.2.0.0
 weigh :: (NFData b) => CompParams a b
