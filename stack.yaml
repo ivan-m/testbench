@@ -1,0 +1,8 @@
+resolver: lts-10.10
+
+packages:
+- .
+
+extra-deps:
+  - streaming-cassava-0.1.0.1
+  - streaming-with-0.2.1.1
