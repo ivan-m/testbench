@@ -3,6 +3,8 @@
 
 * Allow building with criterion-0.13.* and 0.14.*
 
+* Allow building with temporary-1.3.*
+
 0.2.1.1 (6 February, 2018)
 ==========================
 
