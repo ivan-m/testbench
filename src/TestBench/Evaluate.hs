@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, FlexibleContexts, GADTs, OverloadedStrings,
+{-# LANGUAGE BangPatterns, CPP, FlexibleContexts, GADTs, OverloadedStrings,
              RankNTypes #-}
 
 {- |
@@ -67,6 +67,10 @@ import System.IO                        (hClose)
 import System.IO.Temp                   (withSystemTempFile)
 import System.Process                   (rawSystem)
 import Text.Printf                      (printf)
+
+#if MIN_VERSION_base (4,9,0)
+import Data.Semigroup (Semigroup(..))
+#endif
 
 --------------------------------------------------------------------------------
 
@@ -162,18 +166,25 @@ data EvalParams = EP { hasBench  :: !Bool
                      }
                 deriving (Eq, Ord, Show, Read)
 
+#if MIN_VERSION_base (4,9,0)
+instance Semigroup EvalParams where
+  (<>) = appendEP
+#endif
+
 instance Monoid EvalParams where
   mempty = EP { hasBench  = False
               , hasWeigh  = False
               , nameWidth = 0
               }
+  mappend = appendEP
 
-  mappend ec1 ec2 = EP { hasBench  = mappendBy hasBench
-                       , hasWeigh  = mappendBy hasWeigh
-                       , nameWidth = nameWidth ec1 `max` nameWidth ec2
-                       }
-    where
-      mappendBy f = f ec1 || f ec2
+appendEP :: EvalParams -> EvalParams -> EvalParams
+appendEP ec1 ec2 = EP { hasBench  = appendBy hasBench
+                      , hasWeigh  = appendBy hasWeigh
+                      , nameWidth = nameWidth ec1 `max` nameWidth ec2
+                      }
+  where
+    appendBy f = f ec1 || f ec2
 
 checkForest :: EvalForest -> EvalParams
 checkForest = mconcat . map (foldLTree mergeNode calcConfig)
