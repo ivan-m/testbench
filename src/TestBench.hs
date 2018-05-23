@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies,
-             GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-             RecordWildCards #-}
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, FunctionalDependencies,
+             GeneralizedNewtypeDeriving, MultiParamTypeClasses, RecordWildCards
+             #-}
 
 {- |
    Module      : TestBench
@@ -139,6 +139,10 @@ import Data.Maybe                      (mapMaybe)
 import Data.Monoid                     (Endo(..))
 import Options.Applicative             (execParser)
 import System.Exit                     (exitSuccess)
+
+#if MIN_VERSION_base (4,9,0)
+import Data.Semigroup (Semigroup(..))
+#endif
 
 -- -----------------------------------------------------------------------------
 
@@ -480,16 +484,24 @@ data CompParams a b = CP { withOps :: CompInfo a b -> Endo [Operation]
                          , mkOps   :: Endo (CompInfo a b)
                          }
 
+#if MIN_VERSION_base (4,9,0)
+instance Semigroup (CompParams a b) where
+  (<>) = appendCP
+#endif
+
 instance Monoid (CompParams a b) where
   mempty = CP { withOps = mempty
               , mkOps   = mempty
               }
 
-  mappend cp1 cp2 = CP { withOps = mappendBy withOps
-                       , mkOps   = mappendBy mkOps
-                       }
-    where
-      mappendBy f = mappend (f cp1) (f cp2)
+  mappend = appendCP
+
+appendCP :: CompParams a b -> CompParams a b -> CompParams a b
+appendCP cp1 cp2 = CP { withOps = appendBy withOps
+                      , mkOps   = appendBy mkOps
+                      }
+  where
+    appendBy f = mappend (f cp1) (f cp2)
 
 -- | A convenience class to make it easier to provide 'CompParams'
 --   values.
