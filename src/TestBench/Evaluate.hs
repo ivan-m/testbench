@@ -33,14 +33,15 @@ module TestBench.Evaluate
 import TestBench.Commands  (resetUnusedConfig, weighFileArg, weighIndexArg)
 import TestBench.LabelTree
 
-import Criterion.Analysis    (OutlierVariance(ovFraction), SampleAnalysis(..))
-import Criterion.Internal    (runAndAnalyseOne)
-import Criterion.Measurement (initializeTime, secs)
-import Criterion.Monad       (withConfig)
-import Criterion.Types       (Benchmark, Benchmarkable, Config(..),
-                              DataRecord(..), Report(..), bench, bgroup)
-import Statistics.Types      (ConfInt(..), Estimate(..))
-import Weigh                 (weighAction, weighFunc)
+import Criterion.Analysis          (OutlierVariance(ovFraction),
+                                    SampleAnalysis(..))
+import Criterion.Internal          (runAndAnalyseOne)
+import Criterion.Measurement       (initializeTime, secs)
+import Criterion.Measurement.Types (Benchmark, Benchmarkable, bench, bgroup)
+import Criterion.Monad             (withConfig)
+import Criterion.Types             (Config(..), DataRecord(..), Report(..))
+import Statistics.Types            (ConfInt(..), Estimate(..))
+import Weigh                       (weighAction, weighFunc)
 
 import Data.Csv (DefaultOrdered(..), Field, Name, ToField, ToNamedRecord(..),
                  ToRecord(..), header, namedRecord, record, toField)

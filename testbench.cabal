@@ -50,13 +50,14 @@ library
   build-depends:       base == 4.*
                      , bytestring
                      , cassava == 0.5.*
-                     , criterion >= 1.2.1.0 && < 1.5
+                     , criterion == 1.5.*
+                     , criterion-measurement == 0.1.*
                      , dlist == 0.8.*
                      , deepseq >= 1.1.0.0 && < 1.5
                      , HUnit >= 1.1 && < 1.7
                      , optparse-applicative >= 0.11.0.0 && < 0.15
                      , process >= 1.1.0.0 && < 1.7
-                     , statistics == 0.14.*
+                     , statistics >= 0.14 && < 0.16
                      , streaming == 0.2.*
                      , streaming-cassava == 0.1.*
                      , streaming-with >= 0.1.0.0 && < 0.3
