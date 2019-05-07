@@ -1,5 +1,5 @@
 name:                testbench
-version:             0.2.1.2
+version:             0.2.1.3
 synopsis:            Create tests and benchmarks together
 description: {
 Test your benchmarks!  Benchmark your tests!

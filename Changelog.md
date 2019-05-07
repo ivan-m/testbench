@@ -1,3 +1,10 @@
+0.2.1.3 (7 May, 2019)
+=====================
+
+* Now requires criterion-0.15.*
+
+* No longer builds with GHC < 8.
+
 0.2.1.2 (23 May, 2018)
 ======================
 
