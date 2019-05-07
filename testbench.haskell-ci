@@ -1,0 +1,4 @@
+-- Include these fields "as is" in generated cabal.project
+raw-project
+  package testbench
+    flags: +examples
